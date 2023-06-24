@@ -1,0 +1,6 @@
+<lint>
+    <issue id="HardcodedText" severity="warning" />
+    <issue id="LogConditional" severity="warning" />
+    <issue id="LongLogTag" severity="warning" />
+    <issue id="ConstantLocale" severity="fatal" />
+</lint>

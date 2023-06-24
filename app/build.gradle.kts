@@ -25,6 +25,17 @@ android {
     }
 
     buildTypes {
+
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
         release {
             // Enables code shrinking, obfuscation and optimisation for the release build type.
             isMinifyEnabled = true
@@ -35,6 +46,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            lint {
+                 baseline = file("lint.xml")
+            }
         }
     }
     java {
