@@ -15,6 +15,8 @@ import com.chouten.app.presentation.ui.screens.destinations.HistoryViewDestinati
 import com.chouten.app.presentation.ui.screens.destinations.HomeViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.MoreViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.SearchViewDestination
+import com.ramcosta.composedestinations.annotation.NavGraph
+import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.spec.DirectionDestinationSpec
 
 object Navigation {
@@ -26,6 +28,9 @@ object Navigation {
     const val SearchRoute = "search"
     const val HistoryRoute = "history"
     const val MoreRoute = "more"
+
+    // Nested routes for the More screen
+    const val AppearanceRoute = "appearance"
 
     enum class Destination(
         val direction: DirectionDestinationSpec,
@@ -64,3 +69,10 @@ object Navigation {
         )
     }
 }
+
+@RootNavGraph
+@NavGraph
+annotation class MoreNavGraph(
+    val start: Boolean = false,
+    val route: String = Navigation.MoreRoute
+)
