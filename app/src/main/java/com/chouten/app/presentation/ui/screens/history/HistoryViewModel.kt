@@ -31,6 +31,10 @@ class HistoryViewModel @Inject constructor(
         historyUseCases.deleteHistory(url)
     }
 
+    suspend fun deleteAllHistoryEntries() {
+        historyUseCases.deleteAllHistory()
+    }
+
     suspend fun updateHistoryEntry(historyEntry: HistoryEntry) {
         historyUseCases.updateHistory(historyEntry)
     }

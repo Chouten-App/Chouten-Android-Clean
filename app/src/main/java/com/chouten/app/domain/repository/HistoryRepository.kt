@@ -36,4 +36,10 @@ interface HistoryRepository {
      * @param historyEntry The [HistoryEntry] to delete.
      */
     suspend fun deleteHistoryEntry(historyEntry: HistoryEntry)
+
+    /**
+     * Deletes **all** [HistoryEntry]s from the database.
+     * **Use with caution**
+     */
+    suspend fun deleteAllHistoryEntries()
 }

@@ -5,5 +5,6 @@ data class HistoryUseCases(
     val getHistoryByUrl: GetHistoryByUrlUseCase,
     val insertHistory: InsertHistoryUseCase,
     val deleteHistory: DeleteHistoryUseCase,
-    val updateHistory: UpdateHistoryUseCase
+    val deleteAllHistory: DeleteAllHistoryUseCase,
+    val updateHistory: UpdateHistoryUseCase,
 )

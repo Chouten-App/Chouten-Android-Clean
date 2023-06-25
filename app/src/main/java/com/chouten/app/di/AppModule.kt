@@ -7,6 +7,7 @@ import com.chouten.app.data.repository.HistoryRepositoryImpl
 import com.chouten.app.data.repository.NavigationRepositoryImpl
 import com.chouten.app.domain.repository.HistoryRepository
 import com.chouten.app.domain.repository.NavigationRepository
+import com.chouten.app.domain.use_case.history_use_cases.DeleteAllHistoryUseCase
 import com.chouten.app.domain.use_case.history_use_cases.DeleteHistoryUseCase
 import com.chouten.app.domain.use_case.history_use_cases.GetHistoryByUrlUseCase
 import com.chouten.app.domain.use_case.history_use_cases.GetHistoryUseCase
@@ -50,7 +51,8 @@ object AppModule {
             getHistoryByUrl = GetHistoryByUrlUseCase(historyRepository),
             insertHistory = InsertHistoryUseCase(historyRepository),
             deleteHistory = DeleteHistoryUseCase(historyRepository),
-            updateHistory = UpdateHistoryUseCase(historyRepository)
+            deleteAllHistory = DeleteAllHistoryUseCase(historyRepository),
+            updateHistory = UpdateHistoryUseCase(historyRepository),
         )
     }
 }

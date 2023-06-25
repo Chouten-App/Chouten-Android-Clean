@@ -44,4 +44,11 @@ interface HistoryDao {
      */
     @Delete
     suspend fun deleteHistoryEntry(historyEntry: HistoryEntry)
+
+    /**
+     * #### Deletes **all** [HistoryEntry]s from the database
+     * **Use with caution**
+     */
+    @Query("DELETE FROM HistoryEntry")
+    suspend fun deleteAllHistoryEntries()
 }

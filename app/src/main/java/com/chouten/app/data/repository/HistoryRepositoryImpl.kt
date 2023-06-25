@@ -27,4 +27,8 @@ class HistoryRepositoryImpl(
     override suspend fun deleteHistoryEntry(historyEntry: HistoryEntry) {
         return dao.deleteHistoryEntry(historyEntry)
     }
+
+    override suspend fun deleteAllHistoryEntries() {
+        return dao.deleteAllHistoryEntries()
+    }
 }
