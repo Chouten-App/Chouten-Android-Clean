@@ -1,7 +1,7 @@
 package com.chouten.app.di
 
-import com.chouten.app.data.repository.NavigationRepository
-import com.chouten.app.domain.repository.NavigationRepositoryImpl
+import com.chouten.app.domain.repository.NavigationRepository
+import com.chouten.app.data.repository.NavigationRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

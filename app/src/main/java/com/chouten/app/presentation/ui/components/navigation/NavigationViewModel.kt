@@ -4,7 +4,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.chouten.app.common.Navigation
-import com.chouten.app.data.repository.NavigationRepository
+import com.chouten.app.domain.repository.NavigationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

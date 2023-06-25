@@ -1,4 +1,4 @@
-package com.chouten.app.data.repository
+package com.chouten.app.domain.repository
 
 import com.chouten.app.common.Navigation
 
