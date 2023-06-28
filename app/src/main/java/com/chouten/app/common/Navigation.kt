@@ -31,6 +31,7 @@ object Navigation {
 
     // Nested routes for the More screen
     const val AppearanceRoute = "appearance"
+    const val LogRoute = "log"
 
     enum class Destination(
         val direction: DirectionDestinationSpec,

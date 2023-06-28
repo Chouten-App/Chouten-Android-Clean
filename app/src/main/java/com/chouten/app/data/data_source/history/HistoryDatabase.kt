@@ -1,4 +1,4 @@
-package com.chouten.app.data.data_source
+package com.chouten.app.data.data_source.history
 
 import androidx.room.Database
 import androidx.room.RoomDatabase

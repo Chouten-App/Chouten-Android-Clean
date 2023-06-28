@@ -1,4 +1,4 @@
-package com.chouten.app.data.data_source
+package com.chouten.app.data.data_source.history
 
 import androidx.room.Dao
 import androidx.room.Delete

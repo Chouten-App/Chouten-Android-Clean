@@ -1,6 +1,6 @@
 package com.chouten.app.data.repository
 
-import com.chouten.app.data.data_source.HistoryDao
+import com.chouten.app.data.data_source.history.HistoryDao
 import com.chouten.app.domain.model.HistoryEntry
 import com.chouten.app.domain.repository.HistoryRepository
 import kotlinx.coroutines.flow.Flow
