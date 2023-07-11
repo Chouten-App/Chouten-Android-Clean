@@ -1,4 +1,4 @@
-package com.chouten.app.presentation.ui.screens.more.screens.log_scren
+package com.chouten.app.presentation.ui.screens.more.screens.log_screen
 
 import androidx.lifecycle.ViewModel
 import com.chouten.app.domain.model.LogEntry

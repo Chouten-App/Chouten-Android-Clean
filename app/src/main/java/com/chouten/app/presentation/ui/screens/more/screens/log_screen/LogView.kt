@@ -1,4 +1,4 @@
-package com.chouten.app.presentation.ui.screens.more.screens.log_scren
+package com.chouten.app.presentation.ui.screens.more.screens.log_screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
