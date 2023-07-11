@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.serialization)
     kotlin("kapt")
     id("kotlin-parcelize")
 }
@@ -48,7 +49,7 @@ android {
             )
 
             lint {
-                 baseline = file("lint.xml")
+                baseline = file("lint.xml")
             }
         }
     }
@@ -100,6 +101,9 @@ dependencies {
     annotationProcessor(libs.androidx.room.compiler)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.datastore.core)
 }
 
 kapt {
