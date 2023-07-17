@@ -1,29 +1,20 @@
 package com.chouten.app.presentation.ui.components.navigation
 
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.chouten.app.common.Navigation
-import com.chouten.app.domain.repository.NavigationRepository
+import com.chouten.app.domain.use_case.navigation_use_cases.NavigationUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    navigationRepository: NavigationRepository,
+    private val navUseCases: NavigationUseCases,
 ) : ViewModel() {
-    val bottomDestinations: List<Navigation.Destination> = navigationRepository.getNavigationItems()
-    private lateinit var activeDestination: MutableState<String>
+    val bottomDestinations = navUseCases.getNavigationItems()
+    private val activeDestination = navUseCases.getActiveDestination()
 
-    fun getActiveDestination(): MutableState<String> {
-        return activeDestination
-    }
+    fun getActiveDestination() = activeDestination
 
-    fun setActiveDestination(destination: String) {
-        if (::activeDestination.isInitialized) {
-            activeDestination.value = destination
-        } else {
-            activeDestination = mutableStateOf(destination)
-        }
+    suspend fun setActiveDestination(destination: String) {
+        navUseCases.setActiveNavigationItem(destination)
     }
 }

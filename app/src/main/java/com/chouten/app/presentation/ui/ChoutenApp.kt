@@ -11,13 +11,11 @@ import com.chouten.app.presentation.ui.components.navigation.NavigationViewModel
 import com.chouten.app.presentation.ui.screens.NavGraphs
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
-import com.ramcosta.composedestinations.utils.startDestination
 
 @Composable
 fun ChoutenApp(
 ) {
     val navigationViewModel = hiltViewModel<NavigationViewModel>()
-    navigationViewModel.setActiveDestination(NavGraphs.root.startDestination.route)
     val navigator = rememberNavController()
 
     ChoutenTheme {

@@ -24,6 +24,10 @@ import com.chouten.app.domain.use_case.log_use_cases.GetLogWithinRangeUseCase
 import com.chouten.app.domain.use_case.log_use_cases.GetLogsUseCase
 import com.chouten.app.domain.use_case.log_use_cases.InsertLogUseCase
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
+import com.chouten.app.domain.use_case.navigation_use_cases.GetActiveDestinationUseCase
+import com.chouten.app.domain.use_case.navigation_use_cases.GetNavigationItemsUseCase
+import com.chouten.app.domain.use_case.navigation_use_cases.NavigationUseCases
+import com.chouten.app.domain.use_case.navigation_use_cases.SetActiveNavigationItemUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -90,6 +94,16 @@ object AppModule {
             insertLog = InsertLogUseCase(logRepository),
             deleteLogById = DeleteLogByIdUseCase(logRepository),
             deleteAllLogs = DeleteAllLogsUseCase(logRepository)
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideNavigationUseCases(navigationRepository: NavigationRepository): NavigationUseCases {
+        return NavigationUseCases(
+            getNavigationItems = GetNavigationItemsUseCase(navigationRepository),
+            getActiveDestination = GetActiveDestinationUseCase(navigationRepository),
+            setActiveNavigationItem = SetActiveNavigationItemUseCase(navigationRepository)
         )
     }
 }

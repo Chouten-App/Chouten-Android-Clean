@@ -13,7 +13,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -23,14 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ramcosta.composedestinations.navigation.navigate
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChoutenNavigation(
     navigator: NavController, navigationViewModel: NavigationViewModel = hiltViewModel()
 ) {
+
+    val activeDestination by rememberSaveable {
+        navigationViewModel.getActiveDestination()
+    }
+
     NavigationBar {
-        val activeDestination by remember { navigationViewModel.getActiveDestination() }
+
+        val coroutineScope = rememberCoroutineScope()
 
         navigationViewModel.bottomDestinations.forEach { destination ->
             Log.d(
@@ -49,7 +57,9 @@ fun ChoutenNavigation(
             val badgeCount = 0
             NavigationBarItem(selected = isSelected, alwaysShowLabel = true, onClick = {
                 navigator.navigate(destination.direction).also {
-                    navigationViewModel.setActiveDestination(destination.route)
+                    coroutineScope.launch {
+                        navigationViewModel.setActiveDestination(destination.route)
+                    }
                 }
             }, icon = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
