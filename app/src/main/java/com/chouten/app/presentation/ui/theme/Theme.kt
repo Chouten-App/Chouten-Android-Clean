@@ -72,7 +72,7 @@ fun ChoutenTheme(
 
             context.isDarkTheme(currentAppearance) -> DarkColorScheme
             AppearancePreferences.Appearance.LIGHT == currentAppearance.appearance -> LightColorScheme
-            else -> DarkColorScheme
+            else -> LightColorScheme
         }
     }
 
