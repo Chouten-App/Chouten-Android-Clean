@@ -33,7 +33,7 @@ data class AppearancePreferences(
     companion object {
         val DEFAULT = AppearancePreferences(
             appearance = Appearance.SYSTEM,
-            isDynamicColor = true,
+            isDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         )
     }
 }

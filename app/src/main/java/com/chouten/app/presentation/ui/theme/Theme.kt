@@ -49,13 +49,14 @@ onSurface = Color(0xFF1C1B1F),
 fun ChoutenTheme(
     viewModel: AppearanceViewModel = hiltViewModel(),
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true, content: @Composable () -> Unit
+    content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val currentAppearance by viewModel.getAppearancePreferences(context).collectAsState(
         initial = AppearancePreferences.DEFAULT
     )
+
+    val dynamicColor = currentAppearance.isDynamicColor
 
     val colorScheme = remember(currentAppearance.appearance, darkTheme, dynamicColor) {
         when {

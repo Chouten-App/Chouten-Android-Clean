@@ -1,5 +1,6 @@
 package com.chouten.app.presentation.ui.screens.more.screens.appearance_screen
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import com.chouten.app.common.UiText
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.presentation.ui.components.common.VerticalDivider
 import com.chouten.app.presentation.ui.components.preferences.PreferenceEnumPopup
+import com.chouten.app.presentation.ui.components.preferences.PreferenceToggle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.collectLatest
@@ -61,7 +63,12 @@ fun AppearanceView(
     LaunchedEffect(viewModel.selectedAppearance) {
         preferencesFlow.collectLatest {
             viewModel.selectedAppearance.value = it.appearance
+            viewModel.isDynamicColor.value = it.isDynamicColor
         }
+    }
+
+    val isDynamicColor = rememberSaveable(viewModel.isDynamicColor.value) {
+        mutableStateOf(viewModel.isDynamicColor.value)
     }
 
     val selectedTheme = rememberSaveable(viewModel.selectedAppearance.value) {
@@ -121,6 +128,26 @@ fun AppearanceView(
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
+
+            PreferenceToggle(
+                headlineContent = {
+                    Text(UiText.StringRes(R.string.use_dynamic_theming).string())
+                },
+                supportingContent = {
+                    Text(UiText.StringRes(R.string.use_material_you_dynamic_theming).string())
+                },
+                onToggle = {
+                    coroutineScope.launch {
+                        viewModel.updateDynamicTheme(
+                            context,
+                            it
+                        )
+                    }
+                },
+                constraint = { Build.VERSION.SDK_INT >= Build.VERSION_CODES.S },
+                initial = isDynamicColor.value
+            )
+
             PreferenceEnumPopup<AppearancePreferences.Appearance>(title = {
                 Text(
                     UiText.StringRes(R.string.appearance).string()

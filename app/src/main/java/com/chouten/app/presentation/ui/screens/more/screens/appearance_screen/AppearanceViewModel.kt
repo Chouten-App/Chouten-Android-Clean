@@ -12,6 +12,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppearanceViewModel @Inject constructor() : ViewModel() {
 
+    val isDynamicColor = mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
     val selectedAppearance = mutableStateOf(AppearancePreferences.DEFAULT.appearance)
 
     /**
@@ -21,6 +22,19 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     fun getAppearancePreferences(context: Context): Flow<AppearancePreferences> {
         return context.appearanceDatastore.data
+    }
+
+    /**
+     * Updates the dynamic color setting in the datastore
+     * and updates the dynamic color setting in the view model.
+     * @param context The context to use to update the datastore.
+     * @param isDynamicColor Whether the app should use dynamic (material you) colors.
+     */
+    suspend fun updateDynamicTheme(context: Context, isDynamicColor: Boolean) {
+        context.appearanceDatastore.updateData { current ->
+            this.isDynamicColor.value = isDynamicColor
+            current.copy(isDynamicColor = isDynamicColor)
+        }
     }
 
     /**
