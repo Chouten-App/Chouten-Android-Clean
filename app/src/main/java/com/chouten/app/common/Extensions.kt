@@ -69,6 +69,26 @@ fun ColorScheme.animate(): ColorScheme {
     )
 }
 
+
+/**
+ * Returns true if the app is in dark theme.
+ * Not to be confused with the system theme.
+ * @param appearance The AppearancePreferences.Appearance enum.
+ * @return true if the app is in dark theme
+ * @see isSystemInDarkTheme
+ */
+fun Context.isDarkTheme(appearance: AppearancePreferences.Appearance): Boolean {
+    val uiMode = applicationContext.resources.configuration.uiMode
+    val uiDark = Configuration.UI_MODE_NIGHT_YES
+    val isSystemDark = uiMode.and(Configuration.UI_MODE_NIGHT_MASK) == uiDark
+
+    return when (appearance) {
+        AppearancePreferences.Appearance.SYSTEM -> isSystemDark
+        AppearancePreferences.Appearance.DARK -> true
+        AppearancePreferences.Appearance.LIGHT -> false
+    }
+}
+
 /**
  * Returns true if the app is in dark theme.
  * Not to be confused with the system theme.
@@ -77,17 +97,7 @@ fun ColorScheme.animate(): ColorScheme {
  * @see isSystemInDarkTheme
  */
 fun Context.isDarkTheme(prefs: AppearancePreferences): Boolean {
-    val uiMode = applicationContext.resources.configuration.uiMode
-    val uiDark = Configuration.UI_MODE_NIGHT_YES
-    val isSystemDark = uiMode.and(Configuration.UI_MODE_NIGHT_MASK) == uiDark
-    // We need to check if the user has set the theme to dark or light
-    // or system default. This will be stored within the AppearancePreferences
-    // proto.
-    return when (prefs.appearance) {
-        AppearancePreferences.Appearance.SYSTEM -> isSystemDark
-        AppearancePreferences.Appearance.DARK -> true
-        AppearancePreferences.Appearance.LIGHT -> false
-    }
+    return isDarkTheme(prefs.appearance)
 }
 
 /**
@@ -105,10 +115,6 @@ suspend fun Context.isDarkTheme(): Boolean {
     // or system default. This will be stored within the AppearancePreferences
     // proto.
     appearanceDatastore.data.firstOrNull()?.let {
-        return when (it.appearance) {
-            AppearancePreferences.Appearance.SYSTEM -> isSystemDark
-            AppearancePreferences.Appearance.DARK -> true
-            AppearancePreferences.Appearance.LIGHT -> false
-        }
+        return isDarkTheme(it)
     } ?: return isSystemDark
 }

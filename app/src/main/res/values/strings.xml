@@ -18,4 +18,6 @@
     <string name="back">Back</string>
     <string name="use_material_you_dynamic_theming">Use Material You Dynamic Theming (Android 12+)</string>
     <string name="use_dynamic_theming">Use Dynamic Theming</string>
+    <string name="use_amoled_theme">Use AMOLED Theme</string>
+    <string name="use_amoled_improve_message">Use AMOLED Theme to improve Battery Consumption on certain devices</string>
 </resources>

@@ -14,6 +14,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
 
     val isDynamicColor = mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
     val selectedAppearance = mutableStateOf(AppearancePreferences.DEFAULT.appearance)
+    val isAmoled = mutableStateOf(AppearancePreferences.DEFAULT.isAmoled)
 
     /**
      * Gets the appearance preferences from the datastore.
@@ -46,6 +47,19 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
         context.appearanceDatastore.updateData { current ->
             selectedAppearance.value = appearance
             current.copy(appearance = appearance)
+        }
+    }
+
+    /**
+     * Updates the amoled setting in the datastore
+     * and updates the amoled setting in the view model.
+     * @param context The context to use to update the datastore.
+     * @param isAmoled Whether the app should use amoled colors (black for surface & background).
+     */
+    suspend fun updateAmoled(context: Context, isAmoled: Boolean) {
+        context.appearanceDatastore.updateData { current ->
+            this.isAmoled.value = isAmoled
+            current.copy(isAmoled = isAmoled)
         }
     }
 }

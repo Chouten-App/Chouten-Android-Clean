@@ -16,7 +16,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppearancePreferences(
     val appearance: Appearance,
-    val isDynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val isDynamicColor: Boolean,
+    val isAmoled: Boolean,
 ) {
     @Serializable
     enum class Appearance(val displayName: UiText) {
@@ -33,7 +34,8 @@ data class AppearancePreferences(
     companion object {
         val DEFAULT = AppearancePreferences(
             appearance = Appearance.SYSTEM,
-            isDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            isDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+            isAmoled = false,
         )
     }
 }

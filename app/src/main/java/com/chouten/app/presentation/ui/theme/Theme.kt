@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -57,6 +58,7 @@ fun ChoutenTheme(
     )
 
     val dynamicColor = currentAppearance.isDynamicColor
+    val isAmoled = currentAppearance.isAmoled
 
     val colorScheme = remember(currentAppearance.appearance, darkTheme, dynamicColor) {
         when {
@@ -74,6 +76,13 @@ fun ChoutenTheme(
             AppearancePreferences.Appearance.LIGHT == currentAppearance.appearance -> LightColorScheme
             else -> LightColorScheme
         }
+    }.let {
+        if (isAmoled && context.isDarkTheme(currentAppearance)) {
+            it.copy(
+                surface = Color.Black,
+                background = Color.Black,
+            )
+        } else it
     }
 
     val view = LocalView.current

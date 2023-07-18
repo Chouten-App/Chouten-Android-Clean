@@ -1,6 +1,7 @@
 package com.chouten.app.presentation.ui.screens.more.screens.appearance_screen
 
 import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.R
 import com.chouten.app.common.MoreNavGraph
 import com.chouten.app.common.UiText
+import com.chouten.app.common.isDarkTheme
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.presentation.ui.components.common.VerticalDivider
 import com.chouten.app.presentation.ui.components.preferences.PreferenceEnumPopup
@@ -64,6 +66,7 @@ fun AppearanceView(
         preferencesFlow.collectLatest {
             viewModel.selectedAppearance.value = it.appearance
             viewModel.isDynamicColor.value = it.isDynamicColor
+            viewModel.isAmoled.value = it.isAmoled
         }
     }
 
@@ -73,6 +76,10 @@ fun AppearanceView(
 
     val selectedTheme = rememberSaveable(viewModel.selectedAppearance.value) {
         mutableStateOf(viewModel.selectedAppearance.value)
+    }
+
+    val isAmoled = rememberSaveable(viewModel.isAmoled.value) {
+        mutableStateOf(viewModel.isAmoled.value)
     }
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -206,6 +213,30 @@ fun AppearanceView(
                 transformLabel = {
                     Text(it.displayName.string(), style = MaterialTheme.typography.bodyLarge)
                 })
+
+            AnimatedVisibility(
+                visible = context.isDarkTheme(selectedTheme.value)
+            ) {
+                PreferenceToggle(
+                    headlineContent = {
+                        Text(UiText.StringRes(R.string.use_amoled_theme).string())
+                    },
+                    supportingContent = {
+                        Text(
+                            UiText.StringRes(R.string.use_amoled_improve_message).string()
+                        )
+                    },
+                    onToggle = {
+                        coroutineScope.launch {
+                            viewModel.updateAmoled(
+                                context,
+                                it
+                            )
+                        }
+                    },
+                    initial = isAmoled.value
+                )
+            }
         }
     }
 }
