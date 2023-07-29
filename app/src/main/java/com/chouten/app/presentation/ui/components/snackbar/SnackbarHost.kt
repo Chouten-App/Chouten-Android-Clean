@@ -12,20 +12,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.chouten.app.domain.model.SnackbarModel
 
 @Composable
-fun SnackbarHost() {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-
-    TODO("Snackbar has not been implemented yet.")
-
+fun SnackbarHost(
+    snackbarHostState: SnackbarHostState
+) {
     androidx.compose.material3.SnackbarHost(hostState = snackbarHostState) { data ->
         val extendedVisuals = data.visuals as? SnackbarModel
         val isError = extendedVisuals?.isError ?: false
