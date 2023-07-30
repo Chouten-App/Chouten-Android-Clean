@@ -4,14 +4,14 @@ import androidx.lifecycle.ViewModel
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.repository.SnackbarRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import javax.inject.Inject
 
 @HiltViewModel
 class ChoutenAppViewModel @Inject constructor(
     private val snackbarRepository: SnackbarRepository
 ) : ViewModel() {
-    val snackbarChannel = snackbarRepository.getSnackbar().consumeAsFlow()
+    val snackbarChannel = snackbarRepository.getSnackbar().receiveAsFlow()
 
     /**
      * Show a snackbar with the given [message].
