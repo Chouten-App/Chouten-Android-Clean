@@ -1,6 +1,5 @@
 package com.chouten.app.presentation.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -14,15 +13,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.common.animate
 import com.chouten.app.common.isDarkTheme
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.presentation.ui.screens.more.screens.appearance_screen.AppearanceViewModel
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -85,14 +83,18 @@ fun ChoutenTheme(
         } else it
     }
 
-    val view = LocalView.current
-    LaunchedEffect(view.isInEditMode) {
-        if (!view.isInEditMode) {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-                currentAppearance.appearance == AppearancePreferences.Appearance.DARK
-        }
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = MaterialTheme.colorScheme.surface
+
+    LaunchedEffect(systemUiController, currentAppearance) {
+        val luminance = statusBarColor.luminance()
+        val darkIcons =
+            if (currentAppearance.appearance == AppearancePreferences.Appearance.DARK) luminance <= 0.5 else luminance > 0.5
+
+        systemUiController.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = darkIcons
+        )
     }
 
     MaterialTheme(

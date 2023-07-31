@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.chouten.app"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.chouten.app"
@@ -104,6 +104,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.core)
+    implementation(libs.accompanist.systemuicontroller)
 }
 
 kapt {

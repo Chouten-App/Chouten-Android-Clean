@@ -1,4 +1,5 @@
 [versions]
+accompanistSystemuicontroller = "0.31.6-rc"
 agp = "8.2.0-alpha14"
 core = "1.9.42-beta"
 datastore = "1.0.0"
@@ -19,6 +20,7 @@ roomRuntime = "2.5.2"
 serialization = "1.8.21"
 
 [libraries]
+accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSystemuicontroller" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
 androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
