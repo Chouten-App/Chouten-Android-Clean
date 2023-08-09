@@ -7,6 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.common.animate
 import com.chouten.app.common.isDarkTheme
@@ -84,16 +86,20 @@ fun ChoutenTheme(
     }
 
     val systemUiController = rememberSystemUiController()
-    val statusBarColor = MaterialTheme.colorScheme.surface
+    val statusBarColor = colorScheme.surface
+    val navigationBarColor = colorScheme.surfaceColorAtElevation(3.dp)
 
     LaunchedEffect(systemUiController, currentAppearance) {
         val luminance = statusBarColor.luminance()
         val darkIcons =
             if (currentAppearance.appearance == AppearancePreferences.Appearance.DARK) luminance <= 0.5 else luminance > 0.5
 
-        systemUiController.setSystemBarsColor(
-            color = Color.Transparent,
-            darkIcons = darkIcons
+        systemUiController.setStatusBarColor(
+            color = Color.Transparent, darkIcons = darkIcons
+        )
+
+        systemUiController.setNavigationBarColor(
+            color = navigationBarColor, darkIcons = darkIcons
         )
     }
 
