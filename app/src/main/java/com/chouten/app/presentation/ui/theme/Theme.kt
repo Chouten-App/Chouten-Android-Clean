@@ -91,8 +91,7 @@ fun ChoutenTheme(
 
     LaunchedEffect(systemUiController, currentAppearance) {
         val luminance = statusBarColor.luminance()
-        val darkIcons =
-            if (currentAppearance.appearance == AppearancePreferences.Appearance.DARK) luminance <= 0.5 else luminance > 0.5
+        val darkIcons = luminance >= 0.5f
 
         systemUiController.setStatusBarColor(
             color = Color.Transparent, darkIcons = darkIcons
