@@ -7,9 +7,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
@@ -115,23 +118,27 @@ fun AppearanceView(
         }
 
 
-    Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
-        TopAppBar(title = { Text(UiText.StringRes(R.string.appearance).string()) },
-            navigationIcon = {
-                Icon(Icons.Filled.ArrowBack,
-                    contentDescription = UiText.StringRes(R.string.back).string(),
-                    modifier = Modifier
-                        .clickable {
-                            coroutineScope.launch {
-                                navigator.popBackStack()
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(WindowInsets.systemBars),
+        topBar = {
+            TopAppBar(title = { Text(UiText.StringRes(R.string.appearance).string()) },
+                navigationIcon = {
+                    Icon(Icons.Filled.ArrowBack,
+                        contentDescription = UiText.StringRes(R.string.back).string(),
+                        modifier = Modifier
+                            .clickable {
+                                coroutineScope.launch {
+                                    navigator.popBackStack()
+                                }
                             }
-                        }
-                        .clip(MaterialTheme.shapes.small)
-                        .padding(
-                            horizontal = 12.dp
-                        ))
-            })
-    }) { innerPadding ->
+                            .clip(MaterialTheme.shapes.small)
+                            .padding(
+                                horizontal = 12.dp
+                            ))
+                })
+        }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
