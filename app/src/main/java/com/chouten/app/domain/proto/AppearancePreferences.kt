@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
  * Data class representing the user's appearance preferences.
  * @param appearance The appearance of the app (light, dark, or system default).
  * @param isDynamicColor Whether the app should use dynamic colors (API 31+ only).
+ * @param isAmoled Whether the app should use AMOLED colors (pure black).
  */
 @Serializable
 data class AppearancePreferences(
