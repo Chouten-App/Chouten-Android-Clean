@@ -1,10 +1,18 @@
 package com.chouten.app.domain.proto
 
 import android.content.Context
+import android.net.Uri
 import android.os.Environment
+import androidx.core.net.toUri
 import androidx.datastore.dataStore
 import com.chouten.app.data.data_source.user_preferences.FilePreferencesSerializer
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 /**
  * Data class representing the user's file preferences.
@@ -13,7 +21,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class FilePreferences(
-    val CHOUTEN_ROOT_DIR: String,
+    @Serializable(with = UriSerializer::class) val CHOUTEN_ROOT_DIR: Uri,
     val IS_CHOUTEN_MODULE_DIR_SET: Boolean = false,
 ) {
     companion object {
@@ -23,8 +31,7 @@ data class FilePreferences(
              * ONLY use this method when there is no other alternative.
              */
             CHOUTEN_ROOT_DIR = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                .resolve("Chouten").absolutePath,
-            IS_CHOUTEN_MODULE_DIR_SET = false
+                .resolve("Chouten").toUri(), IS_CHOUTEN_MODULE_DIR_SET = false
         )
     }
 }
@@ -33,3 +40,17 @@ val Context.filepathDatastore by dataStore(
     fileName = "file_preferences.pb",
     serializer = FilePreferencesSerializer,
 )
+
+// Custom Serializer for Uri
+object UriSerializer : KSerializer<Uri> {
+    override fun deserialize(decoder: Decoder): Uri {
+        return decoder.decodeString().toUri()
+    }
+
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("UriSerializer", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Uri) {
+        encoder.encodeString(value.toString())
+    }
+}

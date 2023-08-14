@@ -20,4 +20,9 @@
     <string name="use_dynamic_theming">Use Dynamic Theming</string>
     <string name="use_amoled_theme">Use AMOLED Theme</string>
     <string name="use_amoled_improve_message">Use AMOLED Theme to improve Battery Consumption on certain devices</string>
+    <string name="chouten_directory_alert">Please select a directory to use for storing modules and themes.</string>
+    <string name="chouten_directory_alert_warning">WARNING: For Android 10+, the default directory is within the app\'s data folder, which is often inaccessible to users.</string>
+    <string name="chouten_data_directory_not_set">Set Data Directory</string>
+    <string name="use_default">Use Default</string>
+    <string name="select_directory">Select Directory</string>
 </resources>

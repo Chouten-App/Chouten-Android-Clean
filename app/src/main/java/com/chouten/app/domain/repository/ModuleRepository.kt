@@ -8,10 +8,10 @@ interface ModuleRepository {
      * Returns a list of all modules in the module folder
      * A module is viewed any folder in the module folder
      * Will not filter out invalid modules (e.g modules which are older than the supported version)
-     * @return List<File>
+     * @return List<Uri>
      * @throws IOException if the module folder cannot be read (e.g permissions)
      */
-    suspend fun getModuleDirs(): List<File>
+    suspend fun getModuleDirs(): List<Uri>
 
     /**
      * Adds a module to the module folder
