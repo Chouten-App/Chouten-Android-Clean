@@ -2,42 +2,56 @@ package com.chouten.app.presentation.ui
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.chouten.app.domain.model.SnackbarModel
-import com.chouten.app.domain.proto.FilePreferences
 import com.chouten.app.domain.proto.filepathDatastore
-import com.chouten.app.domain.repository.SnackbarRepository
+import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ChoutenAppViewModel @Inject constructor(
-    private val snackbarRepository: SnackbarRepository
+    private val moduleUseCases: ModuleUseCases
 ) : ViewModel() {
-    val snackbarChannel = snackbarRepository.getSnackbar().receiveAsFlow()
 
     /**
-     * Show a snackbar with the given [message].
-     * The snackbar will NOT take precedence over any other snackbar currently being shown.
-     * @param message The message to be shown in the snackbar.
+     * Set the Module Directory preference to the given [directory].
+     * @param context The context to use to access the filepathDatastore.
+     * @param directory The content uri of the directory to set as the module directory.
+     * expects directory to be a valid document uri.
      */
-    suspend fun showSnackbar(message: SnackbarModel) {
-        snackbarRepository.showSnackbar(message)
-    }
-
-    suspend fun setModuleDirectory(context: Context, directory: Uri? = null) {
+    suspend fun setModuleDirectory(context: Context, directory: Uri) {
         context.filepathDatastore.updateData { preferences ->
             preferences.copy(
-                CHOUTEN_ROOT_DIR = directory ?: if (Build.VERSION.SDK_INT >= 29) {
-                    context.getExternalFilesDir(null)?.toUri()
-                        ?: FilePreferences.DEFAULT.CHOUTEN_ROOT_DIR
-                } else {
-                    FilePreferences.DEFAULT.CHOUTEN_ROOT_DIR
-                }, IS_CHOUTEN_MODULE_DIR_SET = true
+                CHOUTEN_ROOT_DIR = directory, IS_CHOUTEN_MODULE_DIR_SET = true
             )
         }
+    }
+
+    /**
+     * Add a module to the app.
+     * @param uri The content uri of the module to add.
+     * expects uri to be a valid document uri.
+     */
+    suspend fun installModule(uri: Uri, showSnackbar: (SnackbarModel) -> Unit) {
+        try {
+            moduleUseCases.addModule(uri)
+        } catch (e: Exception) {
+            showSnackbar(
+                SnackbarModel(
+                    message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
+                )
+            )
+        }
+    }
+
+    /**
+     * Asynchronously run the given [block] using the viewModelScope.
+     * @param block The block to run asynchronously.
+     */
+    fun runAsync(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
     }
 }
