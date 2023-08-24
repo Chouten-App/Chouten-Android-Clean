@@ -157,7 +157,6 @@ fun AppearanceView(
                         )
                     }
                 },
-                constraint = { Build.VERSION.SDK_INT >= Build.VERSION_CODES.S },
                 initial = isDynamicColor.value
             )
 

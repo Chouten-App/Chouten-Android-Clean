@@ -50,7 +50,7 @@ data class AppearancePreferences(
         val DEFAULT = AppearancePreferences(
             theme = FallbackThemes.LIGHT,
             appearance = Appearance.SYSTEM,
-            isDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+            isDynamicColor = true,
             isAmoled = false,
         )
     }

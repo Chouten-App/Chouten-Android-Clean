@@ -1,8 +1,9 @@
 [versions]
 accompanistSystemuicontroller = "0.31.6-rc"
-agp = "8.2.0-alpha14"
+agp = "8.2.0-alpha16"
 core = "1.9.42-beta"
 datastore = "1.0.0"
+dynamictheme = "1.0.3"
 hiltNavigationCompose = "1.0.0"
 kotlin = "1.8.10"
 core-ktx = "1.10.1"
@@ -30,6 +31,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRunt
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 core = { module = "io.github.raamcosta.compose-destinations:core", version.ref = "core" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+dynamictheme = { module = "com.github.t8rin:dynamictheme", version.ref = "dynamictheme" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
