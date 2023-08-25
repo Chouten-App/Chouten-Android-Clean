@@ -1,6 +1,5 @@
 package com.chouten.app.presentation.ui.screens.more.screens.appearance_screen
 
-import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -192,7 +191,7 @@ fun AppearanceView(
                                 AppearancePreferences.Appearance.LIGHT
                             }
                             coroutineScope.launch {
-                                viewModel.updateTheme(context, selectedTheme.value)
+                                viewModel.updateAppearance(context, selectedTheme.value)
                             }
                         }, thumbContent = {
                             Icon(
@@ -214,7 +213,7 @@ fun AppearanceView(
                 onSelectionChange = {},
                 onSelectedConfirm = {
                     coroutineScope.launch {
-                        viewModel.updateTheme(context, it)
+                        viewModel.updateAppearance(context, it)
                     }
                 },
                 transformLabel = {

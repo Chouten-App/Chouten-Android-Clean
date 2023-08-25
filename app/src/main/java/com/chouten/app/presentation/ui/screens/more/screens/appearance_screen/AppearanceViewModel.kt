@@ -39,11 +39,11 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
-     * Updates the theme in the datastore and updates the selected theme in the view model.
+     * Updates the appearance in the datastore and updates the selected appearance in the view model.
      * @param context The context to use to update the datastore.
      * @param appearance The new appearance to set (light, dark, or system default).
      */
-    suspend fun updateTheme(context: Context, appearance: AppearancePreferences.Appearance) {
+    suspend fun updateAppearance(context: Context, appearance: AppearancePreferences.Appearance) {
         context.appearanceDatastore.updateData { current ->
             selectedAppearance.value = appearance
             current.copy(appearance = appearance)
