@@ -1,6 +1,7 @@
 package com.chouten.app.presentation.ui.screens.more.screens.appearance_screen
 
 import android.content.Context
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.chouten.app.domain.proto.AppearancePreferences
@@ -12,6 +13,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppearanceViewModel @Inject constructor() : ViewModel() {
 
+    val selectedTheme = mutableStateOf(AppearancePreferences.DEFAULT.theme)
     val isDynamicColor = mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
     val selectedAppearance = mutableStateOf(AppearancePreferences.DEFAULT.appearance)
     val isAmoled = mutableStateOf(AppearancePreferences.DEFAULT.isAmoled)
@@ -23,6 +25,18 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     fun getAppearancePreferences(context: Context): Flow<AppearancePreferences> {
         return context.appearanceDatastore.data
+    }
+
+    /**
+     * Updates the theme in the datastore and updates the selected theme in the view model.
+     * @param context The context to use to update the datastore.
+     * @param theme The new theme to set.
+     */
+    suspend fun updateTheme(context: Context, theme: ColorScheme) {
+        context.appearanceDatastore.updateData { current ->
+            selectedTheme.value = theme
+            current.copy(theme = theme)
+        }
     }
 
     /**
