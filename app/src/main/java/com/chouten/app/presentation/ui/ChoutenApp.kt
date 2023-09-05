@@ -1,6 +1,5 @@
 package com.chouten.app.presentation.ui
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,24 +8,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.chouten.app.R
@@ -39,31 +32,24 @@ import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.screens.NavGraphs
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
+import com.ramcosta.composedestinations.navigation.dependency
 import kotlinx.coroutines.launch
 
 @Composable
 fun ChoutenApp(
+    snackbarHostState: SnackbarHostState
 ) {
     val navigationViewModel = hiltViewModel<NavigationViewModel>()
     val navigator = rememberNavController()
 
     val appViewModel = hiltViewModel<ChoutenAppViewModel>()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val snackbarState by appViewModel.snackbarChannel.collectAsState(null)
+    val snackbarHostState = remember { snackbarHostState }
     val coroutineScope = rememberCoroutineScope()
 
     val context = LocalContext.current
 
     // Check if the app has a module directory set
     val filePreferences by context.filepathDatastore.data.collectAsState(initial = FilePreferences.DEFAULT)
-
-    LaunchedEffect(snackbarState) {
-        snackbarState?.let {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(it)
-            }
-        }
-    }
 
     // Launch SAF Picker
     val pickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
@@ -129,7 +115,10 @@ fun ChoutenApp(
             } else DestinationsNavHost(
                 navController = navigator,
                 navGraph = NavGraphs.root,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(paddingValues),
+                dependenciesContainerBuilder = {
+                    dependency(snackbarHostState)
+                }
             )
         }
     }

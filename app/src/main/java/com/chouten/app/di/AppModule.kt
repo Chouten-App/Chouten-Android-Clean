@@ -7,11 +7,9 @@ import com.chouten.app.data.data_source.log.LogDatabase
 import com.chouten.app.data.repository.HistoryRepositoryImpl
 import com.chouten.app.data.repository.LogRepositoryImpl
 import com.chouten.app.data.repository.NavigationRepositoryImpl
-import com.chouten.app.data.repository.SnackbarRepositoryImpl
 import com.chouten.app.domain.repository.HistoryRepository
 import com.chouten.app.domain.repository.LogRepository
 import com.chouten.app.domain.repository.NavigationRepository
-import com.chouten.app.domain.repository.SnackbarRepository
 import com.chouten.app.domain.use_case.history_use_cases.DeleteAllHistoryUseCase
 import com.chouten.app.domain.use_case.history_use_cases.DeleteHistoryUseCase
 import com.chouten.app.domain.use_case.history_use_cases.GetHistoryByUrlUseCase
@@ -107,11 +105,5 @@ object AppModule {
             getActiveDestination = GetActiveDestinationUseCase(navigationRepository),
             setActiveNavigationItem = SetActiveNavigationItemUseCase(navigationRepository)
         )
-    }
-
-    @Singleton
-    @Provides
-    fun provideSnackbarRepository(): SnackbarRepository {
-        return SnackbarRepositoryImpl()
     }
 }

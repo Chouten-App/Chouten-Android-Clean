@@ -2,6 +2,7 @@ package com.chouten.app.presentation.ui.screens.home
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,14 +25,16 @@ import kotlinx.coroutines.launch
 @Destination(
     route = Navigation.HomeRoute
 )
-fun HomeView() {
+fun HomeView(
+    snackbarHostState: SnackbarHostState
+) {
     Text("Home!")
     val vm = hiltViewModel<ChoutenAppViewModel>()
     var counter by rememberSaveable { mutableIntStateOf(1) }
     val coroutineScope = rememberCoroutineScope()
     Button(onClick = {
         coroutineScope.launch {
-            vm.showSnackbar(
+            snackbarHostState.showSnackbar(
                 SnackbarModel(
                     message = "Counter: ${counter++}",
                     duration = SnackbarDuration.Indefinite
