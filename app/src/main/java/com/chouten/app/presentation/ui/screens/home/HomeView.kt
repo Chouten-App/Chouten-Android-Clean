@@ -1,5 +1,6 @@
 package com.chouten.app.presentation.ui.screens.home
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
@@ -15,7 +16,6 @@ import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
-import kotlinx.coroutines.launch
 
 @Composable
 @RootNavGraph(
@@ -24,20 +24,18 @@ import kotlinx.coroutines.launch
 @Destination(
     route = Navigation.HomeRoute
 )
-fun HomeView() {
+fun HomeView(
+    snackbarLambda: (SnackbarModel) -> Unit,
+) {
     Text("Home!")
-    val vm = hiltViewModel<ChoutenAppViewModel>()
     var counter by rememberSaveable { mutableIntStateOf(1) }
-    val coroutineScope = rememberCoroutineScope()
     Button(onClick = {
-        coroutineScope.launch {
-            vm.showSnackbar(
+        snackbarLambda(
                 SnackbarModel(
                     message = "Counter: ${counter++}",
                     duration = SnackbarDuration.Indefinite
                 )
             )
-        }
     }) {
         Text("Show snackbar")
     }

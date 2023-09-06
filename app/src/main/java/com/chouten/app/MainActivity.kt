@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import com.chouten.app.presentation.ui.ChoutenApp
+import com.chouten.app.presentation.ui.components.common.rememberAppState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -16,7 +17,8 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            ChoutenApp()
+            val appState = rememberAppState()
+            ChoutenApp(appState)
         }
     }
 }
