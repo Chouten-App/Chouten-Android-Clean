@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -24,8 +22,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.chouten.app.R
 import com.chouten.app.common.UiText
+import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.FilePreferences
 import com.chouten.app.domain.proto.filepathDatastore
+import com.chouten.app.presentation.ui.components.common.AppState
 import com.chouten.app.presentation.ui.components.navigation.ChoutenNavigation
 import com.chouten.app.presentation.ui.components.navigation.NavigationViewModel
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
@@ -37,13 +37,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ChoutenApp(
-    snackbarHostState: SnackbarHostState
+    appState: AppState,
 ) {
     val navigationViewModel = hiltViewModel<NavigationViewModel>()
     val navigator = rememberNavController()
 
-    val appViewModel = hiltViewModel<ChoutenAppViewModel>()
-    val snackbarHostState = remember { snackbarHostState }
     val coroutineScope = rememberCoroutineScope()
 
     val context = LocalContext.current
@@ -65,18 +63,18 @@ fun ChoutenApp(
             val uri = result.data?.data ?: return@rememberLauncherForActivityResult
 
             coroutineScope.launch {
-                appViewModel.setModuleDirectory(context, uri)
+                appState.viewModel.setModuleDirectory(context, uri)
             }
         }
     }
 
+    val snackbarLambda: (SnackbarModel) -> Unit = { snackbarModel ->
+        appState.showSnackbar(snackbarModel)
+    }
+
     ChoutenTheme {
         Scaffold(
-            snackbarHost = {
-                SnackbarHost(
-                    snackbarHostState
-                )
-            },
+            snackbarHost = { SnackbarHost(appState.snackbarHostState) },
             bottomBar = { ChoutenNavigation(navigator, navigationViewModel) }
         ) { paddingValues ->
             if (!filePreferences.IS_CHOUTEN_MODULE_DIR_SET) {
@@ -106,7 +104,7 @@ fun ChoutenApp(
                 }, dismissButton = {
                     TextButton(onClick = {
                         coroutineScope.launch {
-                            appViewModel.setModuleDirectory(context)
+                            appState.viewModel.setModuleDirectory(context)
                         }
                     }) {
                         Text(text = UiText.StringRes(R.string.use_default).string())
@@ -117,7 +115,7 @@ fun ChoutenApp(
                 navGraph = NavGraphs.root,
                 modifier = Modifier.padding(paddingValues),
                 dependenciesContainerBuilder = {
-                    dependency(snackbarHostState)
+                    dependency(snackbarLambda)
                 }
             )
         }
