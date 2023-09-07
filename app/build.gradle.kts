@@ -15,7 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.chouten.app"
         minSdk = 23
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "0.0.1"
 
