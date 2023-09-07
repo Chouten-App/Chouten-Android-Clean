@@ -2,7 +2,9 @@ package com.chouten.app.presentation.ui.screens.more.screens.appearance_screen
 
 import android.content.Context
 import androidx.compose.material3.ColorScheme
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.domain.proto.appearanceDatastore
@@ -13,10 +15,10 @@ import javax.inject.Inject
 @HiltViewModel
 class AppearanceViewModel @Inject constructor() : ViewModel() {
 
-    val selectedTheme = mutableStateOf(AppearancePreferences.DEFAULT.theme)
-    val isDynamicColor = mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
-    val selectedAppearance = mutableStateOf(AppearancePreferences.DEFAULT.appearance)
-    val isAmoled = mutableStateOf(AppearancePreferences.DEFAULT.isAmoled)
+    var selectedTheme by mutableStateOf(AppearancePreferences.DEFAULT.theme)
+    var isDynamicColor by mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
+    var selectedAppearance by mutableStateOf(AppearancePreferences.DEFAULT.appearance)
+    var isAmoled by mutableStateOf(AppearancePreferences.DEFAULT.isAmoled)
 
     /**
      * Gets the appearance preferences from the datastore.
@@ -34,7 +36,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     suspend fun updateTheme(context: Context, theme: ColorScheme) {
         context.appearanceDatastore.updateData { current ->
-            selectedTheme.value = theme
+            selectedTheme = theme
             current.copy(theme = theme)
         }
     }
@@ -47,7 +49,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     suspend fun updateDynamicTheme(context: Context, isDynamicColor: Boolean) {
         context.appearanceDatastore.updateData { current ->
-            this.isDynamicColor.value = isDynamicColor
+            this.isDynamicColor = isDynamicColor
             current.copy(isDynamicColor = isDynamicColor)
         }
     }
@@ -59,7 +61,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     suspend fun updateAppearance(context: Context, appearance: AppearancePreferences.Appearance) {
         context.appearanceDatastore.updateData { current ->
-            selectedAppearance.value = appearance
+            selectedAppearance = appearance
             current.copy(appearance = appearance)
         }
     }
@@ -72,7 +74,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
      */
     suspend fun updateAmoled(context: Context, isAmoled: Boolean) {
         context.appearanceDatastore.updateData { current ->
-            this.isAmoled.value = isAmoled
+            this.isAmoled = isAmoled
             current.copy(isAmoled = isAmoled)
         }
     }

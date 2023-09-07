@@ -60,28 +60,28 @@ fun AppearanceView(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val preferencesFlow = remember(viewModel.selectedAppearance.value) {
+    val preferencesFlow = remember(viewModel.selectedAppearance) {
         viewModel.getAppearancePreferences(context)
     }
 
     LaunchedEffect(viewModel.selectedAppearance) {
         preferencesFlow.collectLatest {
-            viewModel.selectedAppearance.value = it.appearance
-            viewModel.isDynamicColor.value = it.isDynamicColor
-            viewModel.isAmoled.value = it.isAmoled
+            viewModel.selectedAppearance = it.appearance
+            viewModel.isDynamicColor = it.isDynamicColor
+            viewModel.isAmoled = it.isAmoled
         }
     }
 
-    val isDynamicColor = rememberSaveable(viewModel.isDynamicColor.value) {
-        mutableStateOf(viewModel.isDynamicColor.value)
+    val isDynamicColor = rememberSaveable(viewModel.isDynamicColor) {
+        mutableStateOf(viewModel.isDynamicColor)
     }
 
-    val selectedTheme = rememberSaveable(viewModel.selectedAppearance.value) {
-        mutableStateOf(viewModel.selectedAppearance.value)
+    val selectedTheme = rememberSaveable(viewModel.selectedAppearance) {
+        mutableStateOf(viewModel.selectedAppearance)
     }
 
-    val isAmoled = rememberSaveable(viewModel.isAmoled.value) {
-        mutableStateOf(viewModel.isAmoled.value)
+    val isAmoled = rememberSaveable(viewModel.isAmoled) {
+        mutableStateOf(viewModel.isAmoled)
     }
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -91,7 +91,7 @@ fun AppearanceView(
             val lightIcon = Icons.Filled.LightMode
             val darkIcon = Icons.Filled.DarkMode
 
-            when (viewModel.selectedAppearance.value) {
+            when (viewModel.selectedAppearance) {
                 AppearancePreferences.Appearance.LIGHT -> Pair(
                     lightIcon, UiText.StringRes(R.string.light_theme)
                 )
@@ -117,10 +117,9 @@ fun AppearanceView(
         }
 
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .consumeWindowInsets(WindowInsets.systemBars),
+    Scaffold(modifier = Modifier
+        .fillMaxSize()
+        .consumeWindowInsets(WindowInsets.systemBars),
         topBar = {
             TopAppBar(title = { Text(UiText.StringRes(R.string.appearance).string()) },
                 navigationIcon = {
@@ -142,22 +141,17 @@ fun AppearanceView(
             modifier = Modifier.padding(innerPadding)
         ) {
 
-            PreferenceToggle(
-                headlineContent = {
-                    Text(UiText.StringRes(R.string.use_dynamic_theming).string())
-                },
-                supportingContent = {
-                    Text(UiText.StringRes(R.string.use_material_you_dynamic_theming).string())
-                },
-                onToggle = {
-                    coroutineScope.launch {
-                        viewModel.updateDynamicTheme(
-                            context,
-                            it
-                        )
-                    }
-                },
-                initial = isDynamicColor.value
+            PreferenceToggle(headlineContent = {
+                Text(UiText.StringRes(R.string.use_dynamic_theming).string())
+            }, supportingContent = {
+                Text(UiText.StringRes(R.string.use_material_you_dynamic_theming).string())
+            }, onToggle = {
+                coroutineScope.launch {
+                    viewModel.updateDynamicTheme(
+                        context, it
+                    )
+                }
+            }, initial = isDynamicColor.value
             )
 
             PreferenceEnumPopup<AppearancePreferences.Appearance>(title = {
@@ -179,7 +173,7 @@ fun AppearanceView(
                         VerticalDivider(
                             height = 32.dp, modifier = Modifier.padding(horizontal = 16.dp)
                         )
-                        Switch(checked = when (viewModel.selectedAppearance.value) {
+                        Switch(checked = when (viewModel.selectedAppearance) {
                             AppearancePreferences.Appearance.LIGHT -> false
                             AppearancePreferences.Appearance.DARK -> true
                             else -> isSystemInDarkTheme()
@@ -222,24 +216,19 @@ fun AppearanceView(
             AnimatedVisibility(
                 visible = context.isDarkTheme(selectedTheme.value)
             ) {
-                PreferenceToggle(
-                    headlineContent = {
-                        Text(UiText.StringRes(R.string.use_amoled_theme).string())
-                    },
-                    supportingContent = {
-                        Text(
-                            UiText.StringRes(R.string.use_amoled_improve_message).string()
+                PreferenceToggle(headlineContent = {
+                    Text(UiText.StringRes(R.string.use_amoled_theme).string())
+                }, supportingContent = {
+                    Text(
+                        UiText.StringRes(R.string.use_amoled_improve_message).string()
+                    )
+                }, onToggle = {
+                    coroutineScope.launch {
+                        viewModel.updateAmoled(
+                            context, it
                         )
-                    },
-                    onToggle = {
-                        coroutineScope.launch {
-                            viewModel.updateAmoled(
-                                context,
-                                it
-                            )
-                        }
-                    },
-                    initial = isAmoled.value
+                    }
+                }, initial = isAmoled.value
                 )
             }
         }
