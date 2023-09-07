@@ -1,6 +1,8 @@
 package com.chouten.app.presentation.ui.components.preferences
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,10 +52,14 @@ fun PreferenceToggle(
 
     val surfaceColor = MaterialTheme.colorScheme.surface
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     ListItem(
         modifier = Modifier
             .clickable(
                 enabled = isConstrained,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current
             ) {
                 isToggled.value = !isToggled.value
                 onToggle(isToggled.value)
@@ -89,6 +95,7 @@ fun PreferenceToggle(
                         }
                     },
                     enabled = isConstrained,
+                    interactionSource = interactionSource
                 )
 
             }
