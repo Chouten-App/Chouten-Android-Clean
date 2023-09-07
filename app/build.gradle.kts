@@ -104,7 +104,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.core)
-    implementation(libs.accompanist.systemuicontroller)
     implementation(libs.dynamictheme)
     implementation(libs.androidx.documentfile)
     implementation(libs.nicehttp)
