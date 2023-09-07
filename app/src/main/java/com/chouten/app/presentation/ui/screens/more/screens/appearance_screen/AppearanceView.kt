@@ -87,7 +87,7 @@ fun AppearanceView(
     val isDarkTheme = isSystemInDarkTheme()
 
     val switchIcon: Pair<ImageVector, UiText.StringRes> =
-        rememberSaveable(viewModel.selectedAppearance.value, isDarkTheme) {
+        remember(viewModel.selectedAppearance, isDarkTheme) {
             val lightIcon = Icons.Filled.LightMode
             val darkIcon = Icons.Filled.DarkMode
 
