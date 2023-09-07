@@ -52,7 +52,6 @@ class MainActivity : ComponentActivity() {
      * If the intent is a module, we want to install it
      * @param context The context
      * @param intent The intent
-     * @param appViewModel The app viewmodel which provides the install module function
      */
     private fun handleIntent(context: Context, intent: Intent?) {
 
