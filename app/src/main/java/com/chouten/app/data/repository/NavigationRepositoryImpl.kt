@@ -16,7 +16,7 @@ class NavigationRepositoryImpl : NavigationRepository {
     override fun getNavigationItems() = destinations
 
     override fun getActiveDestination(): State<String> = activeDestination
-    
+
     override suspend fun setActiveDestination(destination: String) {
         activeDestination.value = destination
     }

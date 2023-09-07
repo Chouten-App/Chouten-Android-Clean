@@ -1,5 +1,7 @@
 package com.chouten.app.domain.model
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -18,8 +20,13 @@ data class ModuleModel(
      * The type of module.
      * Expected values are "source" or "meta".
      */
-    // TODO: Make this an enum
-    val type: String,
+    @SerialName("moduleType") val type: ModuleType,
+
+    /**
+     * The data type of the module.
+     * Expected values are "Video", "Book", or "Text".
+     */
+    @SerialName("type") val dataType: ModuleDataType,
 
     /**
      * Subtypes of the module. These are used to identify
@@ -76,10 +83,10 @@ data class ModuleModel(
 
         /**
          * The icon for the module.
-         * The icon is a file path to
-         * the icon.png in the root of the module.
+         * This is a bitmap encoded as a byte array.
+         * Must be named using icon.(png|jpg|jpeg) in the root of the module directory.
          */
-        val icon: String?,
+        var icon: ByteArray? = null,
 
         /**
          * The languages which the module supports.
@@ -141,8 +148,71 @@ data class ModuleModel(
         )
     }
 
+    @Serializable
+    enum class ModuleType {
+        /**
+         * A module which provides data.
+         */
+        @SerialName("source")
+        SOURCE,
+
+        /**
+         * A module which provides metadata for other modules (e.g search mappings).
+         */
+        @SerialName("meta")
+        META,
+    }
+
+    @Serializable
+    enum class ModuleDataType {
+        /**
+         * A module which provides video data.
+         */
+        @SerialName("Video")
+        VIDEO,
+
+        /**
+         * A module which provides raw text data.
+         */
+        @SerialName("Text")
+        TEXT,
+
+        /**
+         * A module which provides book data.
+         */
+        @SerialName("Book")
+        BOOK,
+    }
+
     /**
      * Converts the module to a JSON string.
      */
     override fun toString(): String = Json.encodeToString(serializer(), this)
+
+    companion object {
+        /**
+         * The minimum format version supported by the app.
+         * This is used to determine if a module is compatible
+         * with the current version of the app.
+         * The value is inclusive (e.g if 2, 2 is the minimum working version).
+         */
+        const val MIN_FORMAT_VERSION = 2
+
+        /**
+         * The maximum format version supported by the app.
+         * This is used to determine if a module is compatible
+         * with the current version of the app.
+         * The value is inclusive (e.g if 3, 3 is the maximum working version).
+         */
+        const val MAX_FORMAT_VERSION = 2
+
+        /**
+         * Convert the ByteArray icon to a Bitmap.
+         * @return The icon as a Bitmap.
+         */
+        fun ModuleMetadata.getIcon(): Bitmap? {
+            // TODO: Use a default icon if the icon is null
+            return icon?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        }
+    }
 }

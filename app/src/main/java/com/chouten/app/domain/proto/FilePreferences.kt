@@ -2,7 +2,6 @@ package com.chouten.app.domain.proto
 
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
 import androidx.core.net.toUri
 import androidx.datastore.dataStore
 import com.chouten.app.data.data_source.user_preferences.FilePreferencesSerializer
@@ -26,12 +25,7 @@ data class FilePreferences(
 ) {
     companion object {
         val DEFAULT = FilePreferences(
-            /**
-             * NOTE: This method is deprecated in API 29 and above.
-             * ONLY use this method when there is no other alternative.
-             */
-            CHOUTEN_ROOT_DIR = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                .resolve("Chouten").toUri(), IS_CHOUTEN_MODULE_DIR_SET = false
+            CHOUTEN_ROOT_DIR = Uri.EMPTY, IS_CHOUTEN_MODULE_DIR_SET = false
         )
     }
 }

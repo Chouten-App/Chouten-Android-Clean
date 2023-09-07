@@ -106,6 +106,8 @@ dependencies {
     implementation(libs.androidx.datastore.core)
     implementation(libs.accompanist.systemuicontroller)
     implementation(libs.dynamictheme)
+    implementation(libs.androidx.documentfile)
+    implementation(libs.nicehttp)
 }
 
 kapt {

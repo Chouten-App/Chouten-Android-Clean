@@ -1,6 +1,8 @@
 package com.chouten.app.common
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -117,4 +119,10 @@ suspend fun Context.isDarkTheme(): Boolean {
     appearanceDatastore.data.firstOrNull()?.let {
         return isDarkTheme(it)
     } ?: return isSystemDark
+}
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

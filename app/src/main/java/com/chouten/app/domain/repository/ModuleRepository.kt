@@ -1,7 +1,6 @@
 package com.chouten.app.domain.repository
 
 import android.net.Uri
-import java.io.File
 
 interface ModuleRepository {
     /**
@@ -16,11 +15,12 @@ interface ModuleRepository {
     /**
      * Adds a module to the module folder
      * @param uri: Uri - The uri of the module to add
+     * @return Uri - The uri of the new module folder which was created
      * @throws IllegalArgumentException if the module already exists
      * @throws IllegalArgumentException if the uri is not valid
      * @throws IOException if the folder cannot be written (e.g permissions)
      */
-    fun addModule(uri: Uri)
+    suspend fun addModule(uri: Uri): Uri
 
     /**
      * Removes a module from the module folder
@@ -29,5 +29,5 @@ interface ModuleRepository {
      * within the module folder
      * @throws IOException if the folder cannot be deleted (e.g permissions)
      */
-    fun removeModule(uri: Uri)
+    suspend fun removeModule(uri: Uri)
 }
