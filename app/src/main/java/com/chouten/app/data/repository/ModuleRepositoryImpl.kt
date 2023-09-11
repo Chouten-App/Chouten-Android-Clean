@@ -65,9 +65,10 @@ class ModuleRepositoryImpl @Inject constructor(
 
                 // The mime type of the moduleUri is not a directory, we
                 // want to skip it
-                if (
-                    contentResolver.getType(moduleUri) != DocumentsContract.Document.MIME_TYPE_DIR &&
-                    cursor.getString(displayNameIndex).split(".").count() > 1
+                if (moduleUri == null || DocumentFile.fromTreeUri(
+                        context,
+                        moduleUri
+                    )?.isDirectory != true
                 ) {
                     continue
                 }
