@@ -23,4 +23,9 @@
     <string name="chouten_directory_alert">Please select a directory to use for storing modules and themes.</string>
     <string name="chouten_data_directory_not_set">Set Data Directory</string>
     <string name="select_directory">Select Directory</string>
+    <string name="use_module_colors_desc">Use author-defined colors for modules in the module list.</string>
+    <string name="use_module_colors_header">Use Custom Module Colors</string>
+    <string name="no_module_selected">No Module Selected</string>
+    <string name="module_selection">Module Selection</string>
+    <string name="module_bottomsheet_description">Select one of the modules below to provide this app with data</string>
 </resources>

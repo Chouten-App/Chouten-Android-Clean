@@ -25,6 +25,7 @@ import kotlin.reflect.full.memberProperties
  * @param appearance The appearance of the app (light, dark, or system default).
  * @param isDynamicColor Whether the app should use dynamic colors (API 31+ only).
  * @param isAmoled Whether the app should use AMOLED colors (pure black).
+ * @param useModuleColors Whether the app should use custom module colors defined in their metadata..
  */
 @Serializable
 data class AppearancePreferences(
@@ -33,6 +34,7 @@ data class AppearancePreferences(
     val appearance: Appearance,
     val isDynamicColor: Boolean,
     val isAmoled: Boolean,
+    val useModuleColors: Boolean
 ) {
     @Serializable
     enum class Appearance(val displayName: UiText) {
@@ -52,6 +54,7 @@ data class AppearancePreferences(
             appearance = Appearance.SYSTEM,
             isDynamicColor = true,
             isAmoled = false,
+            useModuleColors = true
         )
     }
 }

@@ -107,6 +107,7 @@ dependencies {
     implementation(libs.dynamictheme)
     implementation(libs.androidx.documentfile)
     implementation(libs.nicehttp)
+    implementation(libs.coil.compose)
 }
 
 kapt {
