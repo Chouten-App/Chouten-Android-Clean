@@ -26,10 +26,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,19 +71,24 @@ fun AppearanceView(
             viewModel.selectedAppearance = it.appearance
             viewModel.isDynamicColor = it.isDynamicColor
             viewModel.isAmoled = it.isAmoled
+            viewModel.isUsingModuleColors = it.useModuleColors
         }
     }
 
-    val isDynamicColor = rememberSaveable(viewModel.isDynamicColor) {
+    val isDynamicColor by rememberSaveable(viewModel.isDynamicColor) {
         mutableStateOf(viewModel.isDynamicColor)
     }
 
-    val selectedTheme = rememberSaveable(viewModel.selectedAppearance) {
+    var selectedTheme by rememberSaveable(viewModel.selectedAppearance) {
         mutableStateOf(viewModel.selectedAppearance)
     }
 
-    val isAmoled = rememberSaveable(viewModel.isAmoled) {
+    val isAmoled by rememberSaveable(viewModel.isAmoled) {
         mutableStateOf(viewModel.isAmoled)
+    }
+
+    val isUsingModuleColors by rememberSaveable(viewModel.isUsingModuleColors) {
+        mutableStateOf(viewModel.isUsingModuleColors)
     }
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -151,7 +158,7 @@ fun AppearanceView(
                         context, it
                     )
                 }
-            }, initial = isDynamicColor.value
+            }, initial = isDynamicColor
             )
 
             PreferenceEnumPopup<AppearancePreferences.Appearance>(title = {
@@ -178,13 +185,13 @@ fun AppearanceView(
                             AppearancePreferences.Appearance.DARK -> true
                             else -> isSystemInDarkTheme()
                         }, onCheckedChange = {
-                            selectedTheme.value = if (it) {
+                            selectedTheme = if (it) {
                                 AppearancePreferences.Appearance.DARK
                             } else {
                                 AppearancePreferences.Appearance.LIGHT
                             }
                             coroutineScope.launch {
-                                viewModel.updateAppearance(context, selectedTheme.value)
+                                viewModel.updateAppearance(context, selectedTheme)
                             }
                         }, thumbContent = {
                             Icon(
@@ -202,7 +209,7 @@ fun AppearanceView(
                         switchIcon.second.string(),
                     )
                 },
-                initial = selectedTheme.value,
+                initial = selectedTheme,
                 onSelectionChange = {},
                 onSelectedConfirm = {
                     coroutineScope.launch {
@@ -214,7 +221,7 @@ fun AppearanceView(
                 })
 
             AnimatedVisibility(
-                visible = context.isDarkTheme(selectedTheme.value)
+                visible = context.isDarkTheme(selectedTheme)
             ) {
                 PreferenceToggle(headlineContent = {
                     Text(UiText.StringRes(R.string.use_amoled_theme).string())
@@ -228,9 +235,19 @@ fun AppearanceView(
                             context, it
                         )
                     }
-                }, initial = isAmoled.value
+                }, initial = isAmoled
                 )
             }
+
+            PreferenceToggle(headlineContent = {
+                Text(UiText.StringRes(R.string.use_module_colors_header).string())
+            },
+                supportingContent = {
+                    Text(UiText.StringRes(R.string.use_module_colors_desc).string())
+                },
+                onToggle = { coroutineScope.launch { viewModel.updateModuleColor(context, it) } },
+                initial = isUsingModuleColors
+            )
         }
     }
 }

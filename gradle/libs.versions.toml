@@ -1,5 +1,6 @@
 [versions]
 agp = "8.3.0-alpha02"
+coilCompose = "2.4.0"
 core = "1.9.42-beta"
 datastore = "1.0.0"
 dynamictheme = "1.0.3"
@@ -30,6 +31,7 @@ androidx-material-icons-extended = { module = "androidx.compose.material:materia
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 core = { module = "io.github.raamcosta.compose-destinations:core", version.ref = "core" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 dynamictheme = { module = "com.github.t8rin:dynamictheme", version.ref = "dynamictheme" }

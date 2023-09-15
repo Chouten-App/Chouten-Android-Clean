@@ -19,6 +19,7 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
     var isDynamicColor by mutableStateOf(AppearancePreferences.DEFAULT.isDynamicColor)
     var selectedAppearance by mutableStateOf(AppearancePreferences.DEFAULT.appearance)
     var isAmoled by mutableStateOf(AppearancePreferences.DEFAULT.isAmoled)
+    var isUsingModuleColors by mutableStateOf(AppearancePreferences.DEFAULT.useModuleColors)
 
     /**
      * Gets the appearance preferences from the datastore.
@@ -76,6 +77,12 @@ class AppearanceViewModel @Inject constructor() : ViewModel() {
         context.appearanceDatastore.updateData { current ->
             this.isAmoled = isAmoled
             current.copy(isAmoled = isAmoled)
+        }
+    }
+
+    suspend fun updateModuleColor(context: Context, useModuleColors: Boolean) {
+        context.appearanceDatastore.updateData { current ->
+            current.copy(useModuleColors = useModuleColors)
         }
     }
 }
