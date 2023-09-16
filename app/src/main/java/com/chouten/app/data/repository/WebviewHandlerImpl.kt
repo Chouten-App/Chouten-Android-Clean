@@ -236,4 +236,3 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     fun log(message: String) {
         Log.d("WebviewHandler", message)
     }
-}
