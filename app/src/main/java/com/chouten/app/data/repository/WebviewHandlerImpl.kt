@@ -2,6 +2,7 @@ package com.chouten.app.data.repository
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Resources
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -20,16 +21,19 @@ import javax.inject.Inject
 
 class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayload<Action_V2>> @Inject constructor(
     private val httpClient: Requests,
+    /**
+     * Converts an object such as { "action": "search", "result": "..." } to the correct payload
+     */
     private val resultConverter: (Action_V2, String) -> BaseResultPayload
 ) : WebviewHandler<Action_V2, BaseResultPayload> {
 
     override val formatVersion: Int = 2
 
-    private lateinit var webview: WebView
+    override lateinit var callback: (BaseResultPayload) -> Unit
 
+    private lateinit var webview: WebView
     private lateinit var commonCode: String
 
-    override lateinit var callback: (BaseResultPayload) -> Unit
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -39,11 +43,10 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     /**
      * Initializes the webview handler
      * @param context The context
+     * @param callback The callback that the app uses to handle data from the webview handler
      */
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
-    override suspend fun initialize(
-        context: Context, callback: (BaseResultPayload) -> Unit
-    ) {
+    override suspend fun initialize(context: Context, callback: (BaseResultPayload) -> Unit) {
         if (!::webview.isInitialized) {
             webview = WebView(context)
             webview.settings.javaScriptEnabled = true
@@ -60,39 +63,45 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     }
 
     /**
-     * Destroys the webview handler
+     * Loads a webview payload into the handler.
+     * @param code The JavaScript code to load into the webview handler
+     * @param payload The webview payload to pass to the webview handler
      * @throws IllegalStateException if the webview handler is not initialized
+     * @throws IllegalStateException if the common code is not initialized
      */
-    override suspend fun destroy() {
-        if (::webview.isInitialized) {
-            withContext(Dispatchers.Main) {
-                webview.clearHistory()
-                webview.clearCache(true)
-                webview.destroy()
-            }
-        } else {
+    override suspend fun load(
+        code: String, payload: WebviewHandler.Companion.WebviewPayload<Action_V2>
+    ) {
+        if (!::webview.isInitialized) {
             throw IllegalStateException("Webview handler is not initialized")
         }
-    }
-
-    /**
-     * Returns the common code for the webview handler.
-     * The code is dependent on the [formatVersion]
-     * @param context The application context
-     * @return String - The common code for the webview handler
-     */
-    override suspend fun getCommonCode(context: Context): String {
-        val resId = R.raw.commoncode_v2
-        context.resources.openRawResource(resId).bufferedReader().use {
-            return it.readText()
+        if (!::commonCode.isInitialized) {
+            throw IllegalStateException("Common code is not initialized")
         }
+
+        webview.webViewClient = object : WebViewClient() {
+            // We need to wait for the webview to finish loading before we can inject the payload
+            override fun onPageFinished(view: WebView?, url: String?) {
+                val response = WebviewHandler.Companion.BasePayload(
+                    requestId = "-1", action = Action_V2.LOGIC, payload = payload
+                )
+
+                webview.postWebMessage(response)
+            }
+        }
+
+        webview.loadDataWithBaseURL(
+            null, "<script>$commonCode$code</script>", "text/html; charset=utf-8", "br", null
+        )
+
     }
 
     /**
      * Passes a payload to the webview handler
      * @param payload The payload to pass to the webview handler
-     * @param callback The callback that the app uses to handle data from the webview handler
      * @throws IllegalArgumentException if the payload is invalid
+     * @throws IllegalStateException if the webview handler is not initialized
+     * @throws IllegalStateException if the common code is not initialized
      */
     override suspend fun submitPayload(payload: WebviewHandler.Companion.RequestPayload<Action_V2>) {
         if (!::webview.isInitialized) {
@@ -119,44 +128,42 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     }
 
     /**
-     * Loads a webview payload into the handler.
-     * @param code The JavaScript code to load into the webview handler
-     * @param payload The payload to pass to the webview handler
+     * Destroys the webview handler
+     * @throws IllegalStateException if the webview handler is not initialized
      */
-    override suspend fun load(
-        code: String, payload: WebviewHandler.Companion.WebviewPayload<Action_V2>
-    ) {
-        if (!::webview.isInitialized) {
+    override suspend fun destroy() {
+        if (::webview.isInitialized) {
+            withContext(Dispatchers.Main) {
+                webview.clearHistory()
+                webview.clearCache(true)
+                webview.destroy()
+            }
+        } else {
             throw IllegalStateException("Webview handler is not initialized")
         }
-        if (!::commonCode.isInitialized) {
-            throw IllegalStateException("Common code is not initialized")
-        }
-
-        webview.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                val response = WebviewHandler.Companion.BasePayload(
-                    requestId = "-1", action = Action_V2.LOGIC, payload = payload
-                )
-
-                Log.d("WebviewHandler", "Sending payload to webview: $response")
-
-                webview.postWebMessage(response)
-            }
-        }
-
-        Log.d("WebviewHandler", "Loading webview with common code: $commonCode")
-
-        webview.loadDataWithBaseURL(
-            null, "<script>$commonCode$code</script>", "text/html; charset=utf-8", "br", null
-        )
-
     }
 
+    /**
+     * Returns the common code for the webview handler.
+     * The code is dependent on the [formatVersion]
+     * @param context The application context
+     * @throws Resources.NotFoundException if the common code is not found
+     */
+    override suspend fun getCommonCode(context: Context): String {
+        val resId = R.raw.commoncode_v2
+        context.resources.openRawResource(resId).bufferedReader().use {
+            return it.readText()
+        }
+    }
+
+    /**
+     * Handles an HTTP request from the webview handler
+     * @param payload The HTTP request payload
+     * @throws IllegalArgumentException if the method is invalid
+     */
     private suspend fun handleHttpRequest(
         payload: WebviewHandler.Companion.RequestPayload<Action_V2>
     ) {
-        Log.d("WebviewHandler", "Handling HTTP request: $payload")
         val responseText = when (payload.method) {
             "GET" -> httpClient.get(url = payload.url, headers = payload.headers)
             "POST" -> httpClient.post(
@@ -191,16 +198,18 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
         }
     }
 
+    /**
+     * Used by the JS code to make the native app perform a HTTP request
+     */
     @JavascriptInterface
     fun sendHTTPRequest(data: String) {
+        // We need to run this on the main thread because the webview is not thread safe
         runBlocking {
-            Log.d("WebviewHandler", "Received HTTP request: $data")
             try {
                 val payload =
                     json.decodeFromString<WebviewHandler.Companion.RequestPayload<Action_V2>>(
                         data
                     )
-                Log.d("WebviewHandler", payload.toString())
                 submitPayload(payload)
             } catch (e: Exception) {
                 val error = resultConverter(
@@ -211,12 +220,13 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
         }
     }
 
+    /**
+     * Used by the JS code to send a result to the native app
+     */
     @JavascriptInterface
     fun sendResult(data: String) {
         runBlocking {
-            Log.d("WebviewHandler", "Received result: $data")
             try {
-                Log.d("WebviewHandler123", "Trying to parse $data")
                 val parsed = resultConverter(
                     Action_V2.RESULT, data
                 )
@@ -231,8 +241,12 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
         }
     }
 
+    /**
+     * Used by the JS code to log a message
+     */
     @JavascriptInterface
     fun log(message: String) {
+        // TODO: Add a log parameter to the callback
         Log.d("WebviewHandler", message)
     }
 }
