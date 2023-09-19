@@ -23,7 +23,7 @@ class GetAllModulesUseCase @Inject constructor(
     private val jsonParser: Json = Json { ignoreUnknownKeys = true }
 
     private enum class ModuleSubdirectory(val directoryName: String) {
-        HOME("Home"), INFO("Info"), MEDIA("Media"),
+        HOME("Home"), SEARCH("Search"), INFO("Info"), MEDIA("Media"),
     }
 
     /**
@@ -59,6 +59,10 @@ class GetAllModulesUseCase @Inject constructor(
                     if (isEmpty()) log("Info code is empty")
                 }
 
+                val searchCode = getModuleCode(moduleDirUri, ModuleSubdirectory.SEARCH).apply {
+                    if (isEmpty()) log("Search code is empty")
+                }
+
                 val mediaCode = getModuleCode(moduleDirUri, ModuleSubdirectory.MEDIA).apply {
                     if (isEmpty()) log("Media code is empty")
                 }
@@ -67,7 +71,7 @@ class GetAllModulesUseCase @Inject constructor(
 
                 metadata.metadata.icon = icon
                 metadata.code = ModuleModel.ModuleCode(
-                    homeCode, infoCode, mediaCode
+                    homeCode, searchCode, infoCode, mediaCode
                 )
 
                 metadata
