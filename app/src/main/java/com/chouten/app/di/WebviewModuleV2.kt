@@ -1,6 +1,5 @@
 package com.chouten.app.di
 
-import android.util.Log
 import com.chouten.app.data.repository.WebviewHandlerImpl
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.repository.WebviewHandler
@@ -22,7 +21,6 @@ object WebviewModuleV2 {
     @Provides
     fun provideSearchWebviewHandler(client: Requests): WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<SearchResult>>> {
         return WebviewHandlerImpl(client) { action, result: String ->
-            Log.d("SearchWebviewHandler", "Action: $action, Result: $result")
             Payloads_V2.GenericPayload(action, Json.decodeFromString(result))
         }
     }
