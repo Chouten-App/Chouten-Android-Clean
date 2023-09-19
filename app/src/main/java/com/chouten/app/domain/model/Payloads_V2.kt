@@ -45,6 +45,14 @@ object Payloads_V2 {
         GET_SERVER,
     }
 
+    /**
+     * Generic wrapper to implement the [WebviewHandler.Companion.ActionPayload] interface
+     * for result payloads.
+     * @param T the type of the result
+     * @property action The action that the payload is for
+     * @property result The result
+     * @see WebviewHandler.Companion.ActionPayload
+     */
     @Serializable
     data class GenericPayload<T>(
         override val action: Action_V2,
