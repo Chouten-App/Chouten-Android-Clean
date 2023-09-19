@@ -31,6 +31,8 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
 
     override lateinit var callback: (BaseResultPayload) -> Unit
 
+    override lateinit var logFn: (String) -> Unit
+
     private lateinit var webview: WebView
     private lateinit var commonCode: String
 
@@ -246,7 +248,10 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
      */
     @JavascriptInterface
     fun log(message: String) {
-        // TODO: Add a log parameter to the callback
-        Log.d("WebviewHandler", message)
+        if (::logFn.isInitialized) {
+            logFn(message)
+        } else {
+            Log.d("WebviewHandler", message)
+        }
     }
 }

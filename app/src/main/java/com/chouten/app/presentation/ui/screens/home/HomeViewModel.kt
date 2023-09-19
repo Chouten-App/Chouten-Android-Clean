@@ -4,10 +4,12 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.Payloads_V2.Action_V2
 import com.chouten.app.domain.model.Payloads_V2.GenericPayload
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.repository.WebviewHandler
+import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
@@ -29,11 +31,22 @@ data class SearchResult(
 class HomeViewModel @Inject constructor(
     val application: Application,
     val moduleUseCases: ModuleUseCases,
-    val webviewHandler: WebviewHandler<Action_V2, GenericPayload<List<SearchResult>>>
+    val webviewHandler: WebviewHandler<Action_V2, GenericPayload<List<SearchResult>>>,
+    private val logUseCases: LogUseCases
 ) : ViewModel() {
     init {
         viewModelScope.launch {
             // Get activity context
+            webviewHandler.logFn = { message ->
+                viewModelScope.launch {
+                    logUseCases.insertLog(
+                        LogEntry(
+                            entryHeader = "Webview Log", entryContent = message
+                        )
+                    )
+                }
+            }
+
             webviewHandler.initialize(application) { res ->
                 if (res.action != Action_V2.RESULT) return@initialize
                 Log.d("WEBVIEW", "RESULT: ${res.result.result}")
