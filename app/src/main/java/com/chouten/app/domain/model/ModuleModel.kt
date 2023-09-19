@@ -196,7 +196,7 @@ data class ModuleModel(
          * with the current version of the app.
          * The value is inclusive (e.g if 2, 2 is the minimum working version).
          */
-        const val MIN_FORMAT_VERSION = 1
+        const val MIN_FORMAT_VERSION = 2
 
         /**
          * The maximum format version supported by the app.
