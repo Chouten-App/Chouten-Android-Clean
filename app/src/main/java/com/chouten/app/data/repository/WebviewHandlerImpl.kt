@@ -23,7 +23,6 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     private val resultConverter: (Action_V2, String) -> BaseResultPayload
 ) : WebviewHandler<Action_V2, BaseResultPayload> {
 
-
     override val formatVersion: Int = 2
 
     private lateinit var webview: WebView
@@ -236,3 +235,4 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     fun log(message: String) {
         Log.d("WebviewHandler", message)
     }
+}
