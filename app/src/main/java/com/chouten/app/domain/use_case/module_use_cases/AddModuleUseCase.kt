@@ -3,6 +3,7 @@ package com.chouten.app.domain.use_case.module_use_cases
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.OutOfDateAppException
@@ -35,6 +36,8 @@ class AddModuleUseCase @Inject constructor(
         val preferences = mContext.filepathDatastore.data.first()
         val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
 
+        val moduleCount = moduleRepository.getModuleDirs().size
+
         /**
          * Throw an exception safely, deleting the module directory if it exists
          */
@@ -65,39 +68,52 @@ class AddModuleUseCase @Inject constructor(
             ).body.byteStream()
 
             // Save the module to the module folder
-            val moduleFile = DocumentsContract.createDocument(
-                contentResolver, moduleDirUri, "application/octet-stream", uri.lastPathSegment ?:
+            val moduleFile = mContext.cacheDir?.resolve(
+                uri.lastPathSegment ?:
                 // If the module does not have a name, we will generate a random one
-                "Module ${moduleRepository.getModuleDirs().size}"
+                "Module $moduleCount"
             ) ?: throw IOException("Could not create module directory")
 
             // Write the bytes from the remote resource to the module file
-            contentResolver.openOutputStream(moduleFile).use { outputStream ->
-                outputStream?.let {
-                    byteStream.use { inputStream ->
-                        inputStream.copyTo(it)
-                    }
-                } ?: throw IOException("Could not open output stream")
-
+            moduleFile.outputStream().use { outputStream ->
+                byteStream.use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
             }
 
             log("Downloaded module to $moduleFile")
 
-            moduleFile
+            FileProvider.getUriForFile(
+                mContext, "${mContext.packageName}.provider", moduleFile
+            ) ?: throw IOException("Could not get module URI")
         } else null
 
         /**
          * The URI of the module which has been added to the module folder
          */
-        val newModuleUri = moduleRepository.addModule(
-            newUri ?: uri
-        ) /* This may throw an exception if the module is invalid / a folder already exists */
-
-        // If we downloaded the module, we must delete the temporary file
-        newUri?.let {
-            if (DocumentFile.fromSingleUri(mContext, it)?.delete() == false) {
-                log("Could not delete temporary module file $it")
+        val newModuleUri = try {
+            moduleRepository.addModule(
+                newUri ?: uri
+            ).also { _ ->
+                if (isRemote) {
+                    // Delete the module file if we downloaded it
+                    mContext.cacheDir?.resolve(
+                        uri.lastPathSegment ?:
+                        // If the module does not have a name, we will generate a random one
+                        "Module $moduleCount"
+                    )?.delete()
+                }
             }
+        } catch (e: Exception) {
+            // Delete the module file if we downloaded it
+            if (isRemote) {
+                mContext.cacheDir?.resolve(
+                    uri.lastPathSegment ?:
+                    // If the module does not have a name, we will generate a random one
+                    "Module $moduleCount"
+                )?.delete()
+            }
+            safeException(e, null)
         }
 
         // Add a .nomedia file to the module folder
