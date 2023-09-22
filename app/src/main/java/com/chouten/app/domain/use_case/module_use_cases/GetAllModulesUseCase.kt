@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.repository.ModuleRepository
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,13 @@ class GetAllModulesUseCase @Inject constructor(
         // are removed from the list by returning null to the mapNotNull function
         return potentialDirs.mapNotNull { moduleDirUri ->
             try {
+                // Get the display name of the module
+                val displayName =
+                    DocumentFile.fromTreeUri(mContext, moduleDirUri)?.name ?: return@mapNotNull null
+                
+                // Folders ending within .tmp have not completed the
+                // add module process and should be ignored
+                if (displayName.endsWith(".tmp")) return@mapNotNull null
 
                 val metadata = getMetadata(moduleDirUri)
 
