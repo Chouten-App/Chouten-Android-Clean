@@ -36,7 +36,8 @@ class AddModuleUseCase @Inject constructor(
         val preferences = mContext.filepathDatastore.data.first()
         val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
 
-        val moduleCount = moduleRepository.getModuleDirs().size
+        val moduleDirs = moduleRepository.getModuleDirs()
+        val moduleCount = moduleDirs.size
 
         /**
          * Throw an exception safely, deleting the module directory if it exists
@@ -53,7 +54,6 @@ class AddModuleUseCase @Inject constructor(
 
         // If the URI points to a remote resource, we must first download it
         val isRemote = uri.scheme in setOf("http", "https")
-
 
         /**
          * The URI of the module which we will pass on to the module repository
@@ -103,6 +103,24 @@ class AddModuleUseCase @Inject constructor(
                         "Module $moduleCount"
                     )?.delete()
                 }
+            }.let { moduleUri ->
+                // Rename the module folder to include .tmp as a suffix
+                // This is to prevent the module from being parsed by the module repository
+                // if it is not fully parsed yet
+                val renamed = DocumentsContract.renameDocument(
+                    contentResolver,
+                    moduleUri,
+                    ((newUri ?: uri).lastPathSegment ?: "Module $moduleCount") + ".tmp"
+                ) ?: safeException(
+                    IOException("Could not rename module folder to <name>.tmp; try clearing module artifacts"),
+                    moduleUri
+                )
+
+                DocumentsContract.buildChildDocumentsUriUsingTree(
+                    moduleUri, DocumentsContract.getDocumentId(renamed)
+                ) ?: safeException(
+                    IOException("Could not get module folder children"), moduleUri
+                )
             }
         } catch (e: Exception) {
             // Delete the module file if we downloaded it
@@ -206,8 +224,7 @@ class AddModuleUseCase @Inject constructor(
 
         // Compare the module with the existing modules
         // If the module already exists, we must check for updates
-        val metadataUriPairs: List<Pair<Uri, ModuleModel>> =
-            moduleRepository.getModuleDirs().mapNotNull {
+        val metadataUriPairs: List<Pair<Uri, ModuleModel>> = moduleDirs.mapNotNull {
                 // We don't want to compare the module with itself
                 if (it == newModuleUri) {
                     return@mapNotNull null
@@ -338,15 +355,15 @@ class AddModuleUseCase @Inject constructor(
             mContext, newModuleUri.toString().removeSuffix("/children").toUri()
         ) ?: safeException(IOException("Could not get module folder"), newModuleUri)
 
-        // Not being able to rename the module folder is not a critical error
-        // So we will just log it and continue
-        try {
-            if (!moduleFolder.renameTo(module.name)) {
-                log("Could not rename module folder $newModuleUri to ${module.name}")
-            } else log("Successfully added module ${module.name} (${module.id})")
-        } catch (e: Exception) {
-            log("Could not rename module folder $newModuleUri to ${module.name}")
-        }
+        // Not being able to rename the folder is a critical error as
+        // it will cause the module to not be loaded (.tmp suffix will still be there)
+        // We must throw a safe exception
+        DocumentsContract.renameDocument(
+            contentResolver, newModuleUri, module.name
+        ) ?: safeException(
+            IOException("Could not rename module folder to <name>.tmp; try clearing module artifacts"),
+            newModuleUri
+        )
     }
 
     /**
