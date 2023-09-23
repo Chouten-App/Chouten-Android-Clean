@@ -47,7 +47,13 @@ class GetAllModulesUseCase @Inject constructor(
                 // add module process and should be ignored
                 if (displayName.endsWith(".tmp")) return@mapNotNull null
 
-                val metadata = getMetadata(moduleDirUri)
+                val metadata = try {
+                    getMetadata(moduleDirUri)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    log("Error parsing module $moduleDirUri: ${e.message}")
+                    return@mapNotNull null
+                }
 
                 // Match the module against the constraints of the current version of the app
                 // If the module matches, return the module directory uri
