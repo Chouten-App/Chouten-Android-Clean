@@ -214,6 +214,7 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
                     )
                 submitPayload(payload)
             } catch (e: Exception) {
+                e.printStackTrace()
                 val error = resultConverter(
                     Action_V2.ERROR, e.message ?: "Unknown Error"
                 )

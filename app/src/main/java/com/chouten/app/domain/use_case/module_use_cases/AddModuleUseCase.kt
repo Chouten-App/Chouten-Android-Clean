@@ -123,6 +123,7 @@ class AddModuleUseCase @Inject constructor(
                 )
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             // Delete the module file if we downloaded it
             if (isRemote) {
                 mContext.cacheDir?.resolve(
@@ -274,6 +275,7 @@ class AddModuleUseCase @Inject constructor(
 
                                 jsonParser(stringBuffer.toString())
                             } catch (e: Exception) {
+                                e.printStackTrace()
                                 safeException(
                                     IllegalArgumentException("Could not parse module metadata", e),
                                     otherModuleMetadataUri
@@ -304,12 +306,14 @@ class AddModuleUseCase @Inject constructor(
                         compareSemVer("0.0.0", module.version)
                     } catch (e: IllegalArgumentException) {
                         // The module being installed has an invalid version
+                        e.printStackTrace()
                         safeException(e, newModuleUri)
                     }
 
                     try {
                         compareSemVer("0.0.0", it.second.version)
                     } catch (e: IllegalArgumentException) {
+                        e.printStackTrace()
                         // The existing module has an invalid version
                         // We can make a note of it and let the module be installed
                         log("Module ${it.second.name} (${it.second.id}) has an invalid version (${it.second.version})")

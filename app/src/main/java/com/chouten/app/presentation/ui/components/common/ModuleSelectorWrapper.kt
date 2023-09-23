@@ -213,12 +213,14 @@ fun ModuleItem(
     val surfaceColor = try {
         Color("FF${module.metadata.backgroundColor.removePrefix("#")}".toLong(16))
     } catch (e: Exception) {
+        e.printStackTrace()
         ListItemDefaults.containerColor
     }
 
     val onSurfaceColor = try {
         Color("FF${module.metadata.foregroundColor.removePrefix("#")}".toLong(16))
     } catch (e: Exception) {
+        e.printStackTrace()
         ListItemDefaults.contentColor
     }
 

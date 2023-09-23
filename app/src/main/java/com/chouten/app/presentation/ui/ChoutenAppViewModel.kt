@@ -69,6 +69,7 @@ class ChoutenAppViewModel @Inject constructor(
             moduleUseCases.addModule(uri)
             _modules.emit(moduleUseCases.getModuleUris())
         } catch (e: Exception) {
+            e.printStackTrace()
             showSnackbar(
                 SnackbarModel(
                     message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
@@ -92,6 +93,7 @@ class ChoutenAppViewModel @Inject constructor(
             // auto-update list (if it is in the list) and make sure it is
             // not the current module.
         } catch (e: Exception) {
+            e.printStackTrace()
             showSnackbar(
                 SnackbarModel(
                     message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
@@ -130,6 +132,7 @@ class ChoutenAppViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             showSnackbar(
                 SnackbarModel(
                     message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
