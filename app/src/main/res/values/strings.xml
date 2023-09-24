@@ -34,4 +34,6 @@
     <string name="app_logs_removed">Removed all Logs</string>
     <string name="remove_app_logs">Remove All Logs</string>
     <string name="logs">Chouten Logs</string>
+    <string name="search_error">Something went wrong; please check your internet connection and consult the logs.</string>
+    <string name="search_page_no_query">Why not try searching for something?</string>
 </resources>

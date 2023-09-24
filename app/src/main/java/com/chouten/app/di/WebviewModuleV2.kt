@@ -3,7 +3,7 @@ package com.chouten.app.di
 import com.chouten.app.data.repository.WebviewHandlerImpl
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.repository.WebviewHandler
-import com.chouten.app.presentation.ui.screens.home.SearchResult
+import com.chouten.app.presentation.ui.screens.search.SearchResult
 import com.lagradost.nicehttp.Requests
 import dagger.Module
 import dagger.Provides
