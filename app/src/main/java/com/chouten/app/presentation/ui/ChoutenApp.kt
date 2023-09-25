@@ -6,6 +6,9 @@ import android.os.Environment
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -30,9 +33,11 @@ import com.chouten.app.presentation.ui.components.navigation.ChoutenNavigation
 import com.chouten.app.presentation.ui.components.navigation.NavigationViewModel
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.screens.NavGraphs
+import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
+import com.ramcosta.composedestinations.utils.currentDestinationAsState
 import kotlinx.coroutines.launch
 
 /**
@@ -74,10 +79,22 @@ fun ChoutenApp(
         }
     }
 
+    val navigationDestination by navigator.currentDestinationAsState()
+
     ChoutenTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(appState.snackbarHostState) },
-            bottomBar = { ChoutenNavigation(navigator, navigationViewModel) }
+        Scaffold(snackbarHost = { SnackbarHost(appState.snackbarHostState) }, bottomBar = {
+            AnimatedVisibility(visible = when (navigationDestination?.route) {
+                InfoViewDestination.route -> {
+                    false
+                }
+
+                else -> {
+                    true
+                }
+            }, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+                ChoutenNavigation(navigator, navigationViewModel)
+            }
+        }
         ) { paddingValues ->
             if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == false) {
                 AlertDialog(onDismissRequest = {
