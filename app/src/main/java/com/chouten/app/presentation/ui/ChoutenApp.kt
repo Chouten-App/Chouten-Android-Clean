@@ -59,8 +59,19 @@ fun ChoutenApp(
         appState.showSnackbar(snackbarModel)
     }
 
-    LaunchedEffect(Unit) {
-        appState.viewModel.getModules()
+    LaunchedEffect(Unit, filePreferences?.CHOUTEN_ROOT_DIR) {
+        if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true) {
+            try {
+                appState.viewModel.getModules()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                appState.showSnackbar(
+                    SnackbarModel(
+                        isError = true, message = e.message ?: "Unknown error"
+                    )
+                )
+            }
+        }
     }
 
     ChoutenTheme {
