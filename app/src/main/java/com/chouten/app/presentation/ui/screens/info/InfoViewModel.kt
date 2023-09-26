@@ -87,6 +87,19 @@ class InfoViewModel @Inject constructor(
     val episodeList: StateFlow<Resource<InfoResult.MediaListItem>> =
         savedStateHandle.getStateFlow("epListResults", Resource.Uninitialized())
 
+    /**
+     * Whether or not the episode list has been paginated to the end
+     * NOTE: This does NOT mean that the webview itself has finished returning
+     * all of it's episodes.
+     * @see paginatedAll
+     */
+    private var _paginatedAll = false
+
+    /**
+     * Whether or not the webview has finished returning all of it's episodes
+     */
+    var paginatedAll = false
+        private set
 
     init {
         viewModelScope.launch {
@@ -150,7 +163,18 @@ class InfoViewModel @Inject constructor(
                 return@initialize
             }
             viewModelScope.launch {
-                savedStateHandle["epListResults"] = Resource.Success(res.result.result)
+                // Combine the results of `savedStateHandle["epListResults"]` and `res.result.result`
+                // into a single list. This is done because we don't load all the episodes at the same
+                // time - previous episodes may be contained in the savedStateHandle and we don't want
+                // to lose them.
+                val episodes: MutableList<InfoResult.MediaListItem> =
+                    savedStateHandle.get<Resource<List<InfoResult.MediaListItem>>>("epListResults")?.data?.toMutableList()
+                        ?: mutableListOf()
+                episodes.addAll(res.result.result)
+                savedStateHandle["epListResults"] = Resource.Success(episodes)
+                if (_paginatedAll) {
+                    paginatedAll = true
+                }
             }
         }
         epListHandler.load(
@@ -159,5 +183,10 @@ class InfoViewModel @Inject constructor(
                 action = Payloads_V2.Action_V2.GET_EPISODE_LIST
             )
         )
+
+        // We have finished loading all the episodes
+        if (offset + 1 == eplistUrls.size) {
+            _paginatedAll = true
+        }
     }
 }
