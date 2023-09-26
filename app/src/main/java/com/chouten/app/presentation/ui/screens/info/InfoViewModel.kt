@@ -87,7 +87,6 @@ class InfoViewModel @Inject constructor(
     val episodeList: StateFlow<Resource<InfoResult.MediaListItem>> =
         savedStateHandle.getStateFlow("epListResults", Resource.Uninitialized())
 
-    private lateinit var code: String
 
     init {
         viewModelScope.launch {
@@ -118,10 +117,13 @@ class InfoViewModel @Inject constructor(
                 }
             }
 
-            code = moduleUseCases.getModuleUris().find {
-                it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-            }?.code?.info?.getOrNull(0)?.code ?: return@launch
         }
+    }
+
+    suspend fun getCode(): String {
+        return moduleUseCases.getModuleUris().find {
+            it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
+        }?.code?.info?.getOrNull(0)?.code ?: ""
     }
 
     suspend fun getInfo(title: String, url: String) {
@@ -130,7 +132,7 @@ class InfoViewModel @Inject constructor(
             _url = URLDecoder.decode(url, "UTF-8")
         }
         metadataHandler.load(
-            code, WebviewHandler.Companion.WebviewPayload(
+            getCode(), WebviewHandler.Companion.WebviewPayload(
                 query = _url, action = Payloads_V2.Action_V2.GET_METADATA
             )
         )
@@ -152,8 +154,8 @@ class InfoViewModel @Inject constructor(
             }
         }
         epListHandler.load(
-            code, WebviewHandler.Companion.WebviewPayload(
-                query = eplistUrls.getOrNull(0) ?: "",
+            getCode(), WebviewHandler.Companion.WebviewPayload(
+                query = eplistUrls.getOrNull(offset) ?: "",
                 action = Payloads_V2.Action_V2.GET_EPISODE_LIST
             )
         )
