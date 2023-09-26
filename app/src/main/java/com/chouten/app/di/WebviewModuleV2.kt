@@ -1,6 +1,5 @@
 package com.chouten.app.di
 
-import android.util.Log
 import com.chouten.app.data.repository.WebviewHandlerImpl
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.repository.WebviewHandler
@@ -12,7 +11,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 
@@ -29,11 +27,17 @@ object WebviewModuleV2 {
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     @Singleton
     @Provides
     fun provideInfoMetadataWebviewHandler(client: Requests): WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<InfoResult>> {
+        val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            explicitNulls = false
+        }
         return WebviewHandlerImpl(client) { action, result: String ->
-            Payloads_V2.GenericPayload(action, Json.decodeFromString(result))
+            Payloads_V2.GenericPayload(action, json.decodeFromString(result))
         }
     }
 
