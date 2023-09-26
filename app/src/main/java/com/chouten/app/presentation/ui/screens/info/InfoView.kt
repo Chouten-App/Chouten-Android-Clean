@@ -48,4 +48,12 @@ fun InfoView(
             else -> {}
         }
     }
+
+    LaunchedEffect(episodeList) {
+        if (infoViewModel.paginatedAll) {
+            // We have no further episodes to load
+            // so don't need the webview anymore.
+            infoViewModel.epListHandler.destroy()
+        }
+    }
 }
