@@ -66,6 +66,7 @@ import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.chouten.app.presentation.ui.components.common.ModuleSelectorWrapper
+import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import dagger.hilt.android.internal.managers.FragmentComponentManager.findActivity
@@ -129,8 +130,13 @@ fun SearchView(
                             ) {
                                 items(items = searchResults.data ?: listOf()) {
                                     SearchResultItem(
-                                        item = it, onClick = { _, _ -> }
-                                    )
+                                        item = it, onClick = { title, url ->
+                                        navigator.navigate(
+                                            InfoViewDestination(
+                                                title = title, url = url
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         } else {
