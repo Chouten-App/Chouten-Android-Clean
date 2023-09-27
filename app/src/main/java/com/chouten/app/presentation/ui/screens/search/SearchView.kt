@@ -118,16 +118,32 @@ fun SearchView(
 
                 when (searchResults) {
                     is Resource.Success -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(100.dp),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            state = lazygridState
-                        ) {
-                            items(items = searchResults.data ?: listOf()) {
-                                SearchResultItem(
-                                    item = it, onClick = { _, _ -> }
+                        if(!searchResults.data.isNullOrEmpty()){
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                state = lazygridState
+                            ) {
+                                items(items = searchResults.data ?: listOf()) {
+                                    SearchResultItem(
+                                        item = it, onClick = { _, _ -> }
+                                    )
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "(×﹏×)", fontSize = MaterialTheme.typography.headlineLarge.fontSize
+                                )
+                                Text(
+                                    UiText.StringRes(R.string.search_no_results).string(),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
