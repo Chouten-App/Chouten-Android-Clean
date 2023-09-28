@@ -59,6 +59,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import coil.compose.AsyncImage
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.Navigation
 import com.chouten.app.common.Resource
 import com.chouten.app.common.UiText
@@ -105,7 +106,9 @@ fun SearchView(
 
     ModuleSelectorWrapper(viewModel = appViewModel) {
         AnimatedVisibility(
-            visible = moduleStore?.selectedModuleId?.isNotBlank() == true, enter = fadeIn()
+            visible = moduleStore?.selectedModuleId?.isNotBlank() == true,
+            enter = fadeIn(),
+            modifier = Modifier.padding(LocalAppPadding.current)
         ) {
             Column {
                 SearchTextField(

@@ -52,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.MoreNavGraph
 import com.chouten.app.common.Navigation
 import com.chouten.app.common.UiText
@@ -148,7 +149,11 @@ fun LogView(
                     }
                 }
             })
-        }, modifier = Modifier.consumeWindowInsets(WindowInsets.systemBars)
+        }, modifier = Modifier
+            .padding(
+                LocalAppPadding.current
+            )
+            .consumeWindowInsets(WindowInsets.systemBars)
     ) { it ->
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),

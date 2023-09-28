@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
@@ -103,22 +104,29 @@ fun ModuleSelectorWrapper(
         sheetPeekHeight = 0.dp,
         sheetTonalElevation = 3.dp, // Match the elevation of the navbar
         sheetContent = {
-            ModuleSelector(modules = viewModel.modules, onModuleSelected = {
-                coroutineScope.launch {
-                    context.moduleDatastore.updateData { preferences ->
-                        preferences.copy(selectedModuleId = it.id)
+            Column(
+                // We just want the bottom padding (enough to be above the navbar)
+                modifier = Modifier.padding(bottom = LocalAppPadding.current.calculateBottomPadding())
+            ) {
+                ModuleSelector(modules = viewModel.modules, onModuleSelected = {
+                    coroutineScope.launch {
+                        context.moduleDatastore.updateData { preferences ->
+                            preferences.copy(selectedModuleId = it.id)
+                        }
+                        scaffoldState.bottomSheetState.hide()
                     }
-                    scaffoldState.bottomSheetState.hide()
-                }
-            })
+                })
             Divider(
                 modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
+            }
         }) {
         content()
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(LocalAppPadding.current)
         ) {
             FloatingActionButton(
                 modifier = Modifier
