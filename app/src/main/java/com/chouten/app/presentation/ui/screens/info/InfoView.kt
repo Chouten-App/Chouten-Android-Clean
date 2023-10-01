@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -80,6 +81,8 @@ import coil.compose.SubcomposeAsyncImageContent
 import com.chouten.app.common.Navigation
 import com.chouten.app.common.Resource
 import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
+import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
@@ -384,42 +387,19 @@ fun InfoView(
                                     Modifier.heightIn(max = 600.dp),
                                     verticalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
-                                    items(
+                                    itemsIndexed(
                                         items = episodeList.data?.getOrNull(0)?.list ?: listOf()
-                                    ) { item ->
+                                    ) { index, item ->
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
                                             Modifier.clickable {
-//                                                if (provider.mediaTypeText.lowercase() == "episodes") {
-//                                                    val intent = Intent(
-//                                                        navController.context,
-//                                                        PlayerActivity::class.java
-//                                                    )
-//                                                    intent.putExtra(
-//                                                        "title", provider.getTitle()
-//                                                    )
-//                                                    intent.putExtra("episode", item.title)
-//                                                    intent.putExtra("url", item.url)
-//                                                    intent.putExtra(
-//                                                        "episodeNumber", item.number
-//                                                    )
-//                                                    // need a way to pass the list of episodes to the player
-//                                                    intent.putExtra(
-//                                                        "episodes", provider.infoResults.map {
-//                                                            it.list.map { episode ->
-//                                                                episode.toString()
-//                                                            }
-//                                                        }.toString()
-//                                                    )
-//
-//                                                    intent.putExtra(
-//                                                        "currentEpisodeIndex",
-//                                                        provider.infoResults[0].list.indexOf(item)
-//                                                    )
-//                                                    ContextCompat.startActivity(
-//                                                        navController.context, intent, null
-//                                                    )
-                                                //navController.navigate("watch/${titleEncoded}/${episodeEncoded}/${urlEncoded}")
+                                                navigator.navigate(WatchViewDestination(
+                                                    WatchBundle(
+                                                        media = infoResults.data?.mediaList ?: listOf(),
+                                                        selectedMediaIndex = index,
+                                                        url = item.url
+                                                    )
+                                                ))
                                             })
                                     }
                                 }

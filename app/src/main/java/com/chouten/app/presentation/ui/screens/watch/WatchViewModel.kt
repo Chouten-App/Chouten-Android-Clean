@@ -2,24 +2,25 @@ package com.chouten.app.presentation.ui.screens.watch
 
 import android.app.Application
 import android.os.Parcelable
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.chouten.app.common.Resource
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.repository.WebviewHandler
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
-import com.chouten.app.presentation.ui.screens.info.InfoResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
-import javax.inject.Inject
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import java.lang.IllegalStateException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.IOException
+import java.util.UUID
+import javax.inject.Inject
 
 @Serializable
 @Parcelize
@@ -64,52 +65,127 @@ data class WatchResult(
     ) : Parcelable
 }
 
+// TODO: Add documentation
+@Serializable
+@Parcelize
+data class WatchViewModelState(
+    val uuid: String?,
+    val isServerSet: Boolean,
+    val isSourceSet: Boolean,
+    val isBundleSet: Boolean,
+    val error: List<String> = listOf()
+) : Parcelable {
+    companion object {
+        val DEFAULT = WatchViewModelState(
+            uuid = null,
+            isServerSet = false,
+            isSourceSet = false,
+            isBundleSet = false
+        )
+    }
+}
+
 @HiltViewModel
 class WatchViewModel @Inject constructor(
-    val serverHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<WatchResult.ServerData>>>,
-    val videoHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<WatchResult>>,
-    val moduleUseCases: ModuleUseCases,
+    private val serverHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<WatchResult.ServerData>>>,
+    private val videoHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<WatchResult>>,
+    private val moduleUseCases: ModuleUseCases,
     val savedStateHandle: SavedStateHandle,
-    val application: Application,
+    val application: Application
 ) : ViewModel() {
 
     private var url: String = ""
 
-    val servers: StateFlow<Resource<List<WatchResult.ServerData>>> = savedStateHandle.getStateFlow(
-        SERVER_RESULTS, Resource.Uninitialized()
-    )
+    @OptIn(ExperimentalSerializationApi::class)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        explicitNulls = false
+    }
 
-    val sources: StateFlow<Resource<WatchResult>> = savedStateHandle.getStateFlow(
-        VIDEO_RESULTS, Resource.Uninitialized()
-    )
+    /**
+     * Prefix for the files used to store the media data
+     * The sources, servers and bundle are stored within their own <PREFIX>_<source|server|bundle>.json files
+     */
+    // TODO: Look into using this to determine if we should re-fetch the data
+    private val FILE_PREFIX: UUID = UUID.randomUUID().let {
+        // Check if a lock file exists for the current media
+        // If it does, we can't use the UUID
+        var uuid = it
+        while (application.cacheDir.resolve("${uuid}_lock").exists()) {
+            // If it does, we generate a new UUID
+            uuid = UUID.randomUUID()
+        }
+        application.cacheDir.resolve("${uuid}_lock").createNewFile()
+        savedStateHandle[STATUS] = WatchViewModelState.DEFAULT.copy(uuid = uuid.toString())
+        uuid
+    }
+
+    val status: StateFlow<WatchViewModelState> =
+        savedStateHandle.getStateFlow(STATUS, WatchViewModelState.DEFAULT)
 
     init {
         viewModelScope.launch {
             serverHandler.initialize(application) { res ->
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
                     viewModelScope.launch {
-                        savedStateHandle[SERVER_RESULTS] = Resource.Error(
-                            message = "Failed to get servers for $url", data = null
+                        val statusValue = status.firstOrNull()
+                        savedStateHandle[STATUS] = statusValue?.copy(
+                            error = statusValue.error + "Failed to get servers for $url"
                         )
                     }
                     return@initialize
                 }
                 viewModelScope.launch {
-                    savedStateHandle[SERVER_RESULTS] = Resource.Success(res.result.result)
+                    val statusValue = status.firstOrNull()
+
+                    val errors = mutableListOf<String>()
+                    // Save the servers to a file
+                    application.cacheDir.resolve("${FILE_PREFIX}_server.json").bufferedWriter()
+                        .use {
+                            try {
+                                it.write(json.encodeToString(res.result.result))
+                            } catch (e: IOException) {
+                                errors.add(e.message ?: "Unknown error")
+                            }
+                        }
+
+                    savedStateHandle[STATUS] = statusValue?.copy(
+                        isServerSet = true,
+                        error = statusValue.error + errors
+                    )
                 }
             }
 
             videoHandler.initialize(application) { res ->
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
                     viewModelScope.launch {
-                        savedStateHandle[VIDEO_RESULTS] = Resource.Error(
-                            message = "Failed to get sources for $url", data = null
+                        val statusValue = status.firstOrNull()
+                        savedStateHandle[STATUS] = statusValue?.copy(
+                            error = statusValue.error + "Failed to get sources for $url"
                         )
                     }
                     return@initialize
                 }
+
                 viewModelScope.launch {
-                    savedStateHandle[VIDEO_RESULTS] = Resource.Success(res.result.result)
+                    val statusValue = status.firstOrNull()
+
+                    val errors = mutableListOf<String>()
+                    // Save the sources to a file
+                    application.cacheDir.resolve("${FILE_PREFIX}_sources.json").bufferedWriter()
+                        .use {
+                            try {
+                                it.write(json.encodeToString(res.result.result))
+                            } catch (e: IOException) {
+                                errors.add(e.message ?: "Unknown error")
+                            }
+                        }
+
+                    savedStateHandle[STATUS] = statusValue?.copy(
+                        isSourceSet = true,
+                        error = statusValue.error + errors
+                    )
                 }
             }
         }
@@ -122,38 +198,40 @@ class WatchViewModel @Inject constructor(
     }
 
     suspend fun getServers(bundle: WatchBundle, bundleId: Int) {
-        url = bundle.media.getOrElse(bundleId) {
+        url = bundle.media.getOrNull(0)?.list?.getOrElse(bundleId) {
             if (bundle.media.isEmpty()) {
                 null
-            } else
-            throw IllegalArgumentException("Selected media index is out of bounds")
-        }?.list?.getOrElse(0) {
-            throw IllegalStateException("Media list is empty")
+            } else throw IllegalArgumentException("Selected media index is out of bounds")
         }?.url ?: bundle.url
 
-        Log.d("WatchViewModel", "URL is $url")
         serverHandler.load(
-            getCode(),
-            WebviewHandler.Companion.WebviewPayload(
-                action = Payloads_V2.Action_V2.GET_SERVER,
-                query = url
+            getCode(), WebviewHandler.Companion.WebviewPayload(
+                action = Payloads_V2.Action_V2.GET_SERVER, query = url
             )
         )
     }
 
     suspend fun getSource(url: String) {
-        Log.d("WatchViewModel", "URL is $url")
         videoHandler.load(
-            getCode(),
-            WebviewHandler.Companion.WebviewPayload(
-                action = Payloads_V2.Action_V2.GET_VIDEO,
-                query = url
+            getCode(), WebviewHandler.Companion.WebviewPayload(
+                action = Payloads_V2.Action_V2.GET_VIDEO, query = url
             )
         )
     }
 
+    fun setBundle(bundle: WatchBundle) {
+        viewModelScope.launch {
+            // We should also create the file for the bundle
+            application.cacheDir.resolve("${FILE_PREFIX}_bundle.json").bufferedWriter().use {
+                it.write(json.encodeToString(bundle))
+            }
+            savedStateHandle[STATUS] = status.firstOrNull()?.copy(
+                isBundleSet = true
+            )
+        }
+    }
+
     companion object {
-        private const val SERVER_RESULTS = "serverResults"
-        private const val VIDEO_RESULTS = "videoResults"
+        const val STATUS = "status"
     }
 }

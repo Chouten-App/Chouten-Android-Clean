@@ -27,6 +27,7 @@ object Navigation {
     const val HomeRoute = "home"
     const val SearchRoute = "search"
     const val InfoRoute = "info"
+    const val WatchRoute = "watch"
     const val HistoryRoute = "history"
     const val MoreRoute = "more"
 
