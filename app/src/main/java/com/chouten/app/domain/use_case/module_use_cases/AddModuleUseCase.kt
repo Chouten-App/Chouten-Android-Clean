@@ -326,7 +326,10 @@ class AddModuleUseCase @Inject constructor(
                     1 -> {
                         // Delete the old module
                         if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
-                            log("Could not delete module ${it.second.name} (${it.second.id})")
+                            safeException(
+                                IOException("Could not delete module ${it.second.name} (${it.second.id})"),
+                                newModuleUri
+                            )
                         }
                         log("Updated module ${module.name} (${module.id})")
                     }
