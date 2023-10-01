@@ -25,6 +25,7 @@
         tools:targetApi="tiramisu">
         <activity
             android:name=".MainActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleInstancePerTask"
@@ -57,6 +58,15 @@
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".presentation.ui.screens.watch.ExoplayerActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:enableOnBackInvokedCallback="true"
+            android:excludeFromRecents="true"
+            android:label="Chouten Media Player"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
