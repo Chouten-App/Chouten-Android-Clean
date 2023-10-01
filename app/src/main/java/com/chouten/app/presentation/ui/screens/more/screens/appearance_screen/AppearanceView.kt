@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.MoreNavGraph
 import com.chouten.app.common.UiText
 import com.chouten.app.common.isDarkTheme
@@ -126,6 +127,7 @@ fun AppearanceView(
 
     Scaffold(modifier = Modifier
         .fillMaxSize()
+        .padding(LocalAppPadding.current)
         .consumeWindowInsets(WindowInsets.systemBars),
         topBar = {
             TopAppBar(title = { Text(UiText.StringRes(R.string.appearance).string()) },

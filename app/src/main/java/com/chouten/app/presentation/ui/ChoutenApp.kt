@@ -6,22 +6,27 @@ import android.os.Environment
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.filepathDatastore
@@ -30,9 +35,11 @@ import com.chouten.app.presentation.ui.components.navigation.ChoutenNavigation
 import com.chouten.app.presentation.ui.components.navigation.NavigationViewModel
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.screens.NavGraphs
+import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
+import com.ramcosta.composedestinations.utils.currentDestinationAsState
 import kotlinx.coroutines.launch
 
 /**
@@ -62,7 +69,9 @@ fun ChoutenApp(
     LaunchedEffect(Unit, filePreferences?.CHOUTEN_ROOT_DIR) {
         if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true) {
             try {
-                appState.viewModel.getModules()
+                appState.viewModel.runAsync {
+                    appState.viewModel.getModules()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 appState.showSnackbar(
@@ -74,43 +83,60 @@ fun ChoutenApp(
         }
     }
 
+    val navigationDestination by navigator.currentDestinationAsState()
+
     ChoutenTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(appState.snackbarHostState) },
-            bottomBar = { ChoutenNavigation(navigator, navigationViewModel) }
-        ) { paddingValues ->
-            if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == false) {
-                AlertDialog(onDismissRequest = {
-                    // We don't want to allow the user to dismiss the dialog
-                    // So we do nothing here
-                }, title = {
-                    Text(
-                        text = UiText.StringRes(R.string.chouten_data_directory_not_set).string()
-                    )
-                }, text = {
-                    Column {
-                        Text(text = UiText.StringRes(R.string.chouten_directory_alert).string())
-                    }
-                }, confirmButton = {
-                    Button(onClick = {
-                        safPicker.launch(
-                            // We want to use the Documents directory as the default
-                            // If the user has a different directory set, we'll use that
-                            context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)?.toUri()
-                        )
-                    }) {
-                        Text(text = UiText.StringRes(R.string.select_directory).string())
-                    }
-                }, dismissButton = {})
-            } else DestinationsNavHost(
-                navController = navigator,
-                navGraph = NavGraphs.root,
-                modifier = Modifier.padding(paddingValues),
-                dependenciesContainerBuilder = {
-                    dependency(appState.viewModel)
-                    dependency(snackbarLambda)
+        Scaffold(snackbarHost = { SnackbarHost(appState.snackbarHostState) }, bottomBar = {
+            AnimatedVisibility(visible = when (navigationDestination?.route) {
+                InfoViewDestination.route -> {
+                    false
                 }
-            )
+
+                else -> {
+                    true
+                }
+            }, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+                ChoutenNavigation(navigator, navigationViewModel)
+            }
+        }
+        ) { paddingValues ->
+            // Provide the padding values as a CompositionLocal
+            // This allows us to use them in the screens
+
+
+            CompositionLocalProvider(LocalAppPadding provides paddingValues) {
+                if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == false) {
+                    AlertDialog(onDismissRequest = {
+                        // We don't want to allow the user to dismiss the dialog
+                        // So we do nothing here
+                    }, title = {
+                        Text(
+                            text = UiText.StringRes(R.string.chouten_data_directory_not_set)
+                                .string()
+                        )
+                    }, text = {
+                        Column {
+                            Text(text = UiText.StringRes(R.string.chouten_directory_alert).string())
+                        }
+                    }, confirmButton = {
+                        Button(onClick = {
+                            safPicker.launch(
+                                // We want to use the Documents directory as the default
+                                // If the user has a different directory set, we'll use that
+                                context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+                                    ?.toUri()
+                            )
+                        }) {
+                            Text(text = UiText.StringRes(R.string.select_directory).string())
+                        }
+                    }, dismissButton = {})
+                } else DestinationsNavHost(navController = navigator,
+                    navGraph = NavGraphs.root,
+                    dependenciesContainerBuilder = {
+                        dependency(appState.viewModel)
+                        dependency(snackbarLambda)
+                    })
+            }
         }
     }
 }

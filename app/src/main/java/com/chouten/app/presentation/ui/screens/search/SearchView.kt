@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -58,6 +59,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import coil.compose.AsyncImage
 import com.chouten.app.R
+import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.Navigation
 import com.chouten.app.common.Resource
 import com.chouten.app.common.UiText
@@ -65,6 +67,7 @@ import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.chouten.app.presentation.ui.components.common.ModuleSelectorWrapper
+import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import dagger.hilt.android.internal.managers.FragmentComponentManager.findActivity
@@ -104,7 +107,9 @@ fun SearchView(
 
     ModuleSelectorWrapper(viewModel = appViewModel) {
         AnimatedVisibility(
-            visible = moduleStore?.selectedModuleId?.isNotBlank() == true, enter = fadeIn()
+            visible = moduleStore?.selectedModuleId?.isNotBlank() == true,
+            enter = fadeIn(),
+            modifier = Modifier.padding(LocalAppPadding.current)
         ) {
             Column {
                 SearchTextField(
@@ -118,16 +123,40 @@ fun SearchView(
 
                 when (searchResults) {
                     is Resource.Success -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(100.dp),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            state = lazygridState
-                        ) {
-                            items(items = searchResults.data ?: listOf()) {
-                                SearchResultItem(
-                                    item = it, onClick = { _, _ -> }
+                        if(!searchResults.data.isNullOrEmpty()){
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                state = lazygridState
+                            ) {
+                                items(items = searchResults.data ?: listOf()) {
+                                    SearchResultItem(
+                                        item = it, onClick = { title, url ->
+                                            navigator.navigate(
+                                                InfoViewDestination(
+                                                    title = title, url = url
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "(×﹏×)", fontSize = MaterialTheme.typography.headlineLarge.fontSize
+                                )
+                                Text(
+                                    UiText.StringRes(R.string.search_no_results).string(),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
