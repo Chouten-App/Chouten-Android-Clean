@@ -108,6 +108,12 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.nicehttp)
     implementation(libs.coil.compose)
+    implementation("androidx.media3:media3-exoplayer:1.1.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.1.1")
+    implementation("androidx.media3:media3-ui:1.1.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.1.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.1.1")
+
 }
 
 kapt {
