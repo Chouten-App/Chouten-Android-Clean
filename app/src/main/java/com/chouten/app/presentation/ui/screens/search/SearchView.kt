@@ -123,7 +123,8 @@ fun SearchView(
 
                 when (searchResults) {
                     is Resource.Success -> {
-                        if (!searchResults.data.isNullOrEmpty()) {
+                        searchResults.data?.let {
+                            if (it.isEmpty()) return@let null
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(100.dp),
                                 contentPadding = PaddingValues(16.dp),
@@ -131,19 +132,17 @@ fun SearchView(
                                 horizontalArrangement = Arrangement.Center,
                                 state = lazygridState
                             ) {
-                                items(items = searchResults.data ?: listOf()) {
-                                    SearchResultItem(
-                                        item = it, onClick = { title, url ->
-                                            navigator.navigate(
-                                                InfoViewDestination(
-                                                    title = title, url = url
-                                                )
+                                items(items = it) {
+                                    SearchResultItem(item = it, onClick = { title, url ->
+                                        navigator.navigate(
+                                            InfoViewDestination(
+                                                title = title, url = url
                                             )
-                                        }
-                                    )
+                                        )
+                                    })
                                 }
                             }
-                        } else {
+                        } ?: run {
                             Column(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.Center,
