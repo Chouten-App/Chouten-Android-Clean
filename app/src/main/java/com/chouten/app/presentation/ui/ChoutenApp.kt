@@ -34,6 +34,7 @@ import com.chouten.app.presentation.ui.components.navigation.NavigationViewModel
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.screens.NavGraphs
 import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
+import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
@@ -86,7 +87,7 @@ fun ChoutenApp(
     ChoutenTheme {
         Scaffold(snackbarHost = { SnackbarHost(appState.snackbarHostState) }, bottomBar = {
             AnimatedVisibility(visible = when (navigationDestination?.route) {
-                InfoViewDestination.route -> {
+                InfoViewDestination.route, WatchViewDestination.route -> {
                     false
                 }
 
