@@ -25,9 +25,9 @@ import java.lang.IllegalStateException
 @Parcelize
 data class WatchResult(
     val sources: List<Source>,
-    val subtitles: List<Subtitles>,
-    val skips: List<SkipTimes>,
-    val headers: Map<String, String>,
+    val subtitles: List<Subtitles>?,
+    val skips: List<SkipTimes>?,
+    val headers: Map<String, String>?,
 ) : Parcelable {
 
     @Serializable
@@ -67,7 +67,7 @@ data class WatchResult(
 @HiltViewModel
 class WatchViewModel @Inject constructor(
     val serverHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<WatchResult.ServerData>>>,
-//    val videoHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<WatchResult>>>,
+    val videoHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<WatchResult>>,
     val moduleUseCases: ModuleUseCases,
     val savedStateHandle: SavedStateHandle,
     val application: Application,
@@ -77,6 +77,10 @@ class WatchViewModel @Inject constructor(
 
     val servers: StateFlow<Resource<List<WatchResult.ServerData>>> = savedStateHandle.getStateFlow(
         SERVER_RESULTS, Resource.Uninitialized()
+    )
+
+    val sources: StateFlow<Resource<WatchResult>> = savedStateHandle.getStateFlow(
+        VIDEO_RESULTS, Resource.Uninitialized()
     )
 
     init {
@@ -94,17 +98,30 @@ class WatchViewModel @Inject constructor(
                     savedStateHandle[SERVER_RESULTS] = Resource.Success(res.result.result)
                 }
             }
+
+            videoHandler.initialize(application) { res ->
+                if (res.action == Payloads_V2.Action_V2.ERROR) {
+                    viewModelScope.launch {
+                        savedStateHandle[VIDEO_RESULTS] = Resource.Error(
+                            message = "Failed to get sources for $url", data = null
+                        )
+                    }
+                    return@initialize
+                }
+                viewModelScope.launch {
+                    savedStateHandle[VIDEO_RESULTS] = Resource.Success(res.result.result)
+                }
+            }
         }
     }
 
     private suspend fun getCode(): String {
         return moduleUseCases.getModuleUris().find {
             it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-        }?.code?.info?.getOrNull(0)?.code ?: ""
+        }?.code?.mediaConsume?.getOrNull(0)?.code ?: ""
     }
 
     suspend fun getServers(bundle: WatchBundle, bundleId: Int) {
-        Log.d("WatchViewModel", "$bundle $bundleId")
         url = bundle.media.getOrElse(bundleId) {
             if (bundle.media.isEmpty()) {
                 null
@@ -114,10 +131,22 @@ class WatchViewModel @Inject constructor(
             throw IllegalStateException("Media list is empty")
         }?.url ?: bundle.url
 
+        Log.d("WatchViewModel", "URL is $url")
         serverHandler.load(
             getCode(),
             WebviewHandler.Companion.WebviewPayload(
                 action = Payloads_V2.Action_V2.GET_SERVER,
+                query = url
+            )
+        )
+    }
+
+    suspend fun getSource(url: String) {
+        Log.d("WatchViewModel", "URL is $url")
+        videoHandler.load(
+            getCode(),
+            WebviewHandler.Companion.WebviewPayload(
+                action = Payloads_V2.Action_V2.GET_VIDEO,
                 query = url
             )
         )
