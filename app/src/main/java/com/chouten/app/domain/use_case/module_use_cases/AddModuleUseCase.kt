@@ -226,72 +226,72 @@ class AddModuleUseCase @Inject constructor(
         // Compare the module with the existing modules
         // If the module already exists, we must check for updates
         val metadataUriPairs: List<Pair<Uri, ModuleModel>> = moduleDirs.mapNotNull {
-                // We don't want to compare the module with itself
-                if (it == newModuleUri) {
-                    return@mapNotNull null
-                }
+            // We don't want to compare the module with itself
+            if (it == newModuleUri) {
+                return@mapNotNull null
+            }
 
-                contentResolver.query(
-                    it, arrayOf(
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                    ), null, null, null
-                )?.use { cursor ->
-                    val displayNameIndex =
-                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                    val documentIdIndex =
-                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            contentResolver.query(
+                it, arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                ), null, null, null
+            )?.use { cursor ->
+                val displayNameIndex =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val documentIdIndex =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
 
-                    while (cursor.moveToNext()) {
-                        val displayName =
-                            cursor.getString(displayNameIndex) ?: return@mapNotNull null
-                        val documentId = cursor.getString(documentIdIndex) ?: return@mapNotNull null
+                while (cursor.moveToNext()) {
+                    val displayName =
+                        cursor.getString(displayNameIndex) ?: return@mapNotNull null
+                    val documentId = cursor.getString(documentIdIndex) ?: return@mapNotNull null
 
-                        if (displayName == "metadata.json") {
-                            val otherModuleMetadataUri =
-                                DocumentsContract.buildDocumentUriUsingTree(
-                                    moduleDirUri, documentId
-                                ) ?: safeException(
-                                    IllegalArgumentException("Could not get module metadata URI"),
-                                    newModuleUri
-                                )
+                    if (displayName == "metadata.json") {
+                        val otherModuleMetadataUri =
+                            DocumentsContract.buildDocumentUriUsingTree(
+                                moduleDirUri, documentId
+                            ) ?: safeException(
+                                IllegalArgumentException("Could not get module metadata URI"),
+                                newModuleUri
+                            )
 
-                            val otherMetadataIS =
-                                contentResolver.openInputStream(otherModuleMetadataUri)
-                                    ?: safeException(
-                                        IOException("Could not open metadata file"),
-                                        otherModuleMetadataUri
-                                    )
-
-                            val parsedModule = try {
-                                val stringBuffer = StringBuffer()
-                                otherMetadataIS.bufferedReader().use { reader ->
-                                    var line = reader.readLine()
-                                    while (line != null) {
-                                        stringBuffer.append(line)
-                                        line = reader.readLine()
-                                    }
-                                }
-
-                                jsonParser(stringBuffer.toString())
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                safeException(
-                                    IllegalArgumentException("Could not parse module metadata", e),
+                        val otherMetadataIS =
+                            contentResolver.openInputStream(otherModuleMetadataUri)
+                                ?: safeException(
+                                    IOException("Could not open metadata file"),
                                     otherModuleMetadataUri
                                 )
+
+                        val parsedModule = try {
+                            val stringBuffer = StringBuffer()
+                            otherMetadataIS.bufferedReader().use { reader ->
+                                var line = reader.readLine()
+                                while (line != null) {
+                                    stringBuffer.append(line)
+                                    line = reader.readLine()
+                                }
                             }
 
-                            otherMetadataIS.close()
-
-                            return@mapNotNull (it to parsedModule)
+                            jsonParser(stringBuffer.toString())
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            safeException(
+                                IllegalArgumentException("Could not parse module metadata", e),
+                                otherModuleMetadataUri
+                            )
                         }
+
+                        otherMetadataIS.close()
+
+                        return@mapNotNull (it to parsedModule)
                     }
-                    return@mapNotNull null
-                } ?: safeException(
-                    IllegalArgumentException("Could not query module folder"), newModuleUri
-                )
-            }
+                }
+                return@mapNotNull null
+            } ?: safeException(
+                IllegalArgumentException("Could not query module folder"), newModuleUri
+            )
+        }
 
         // Compare the module with the existing modules
         metadataUriPairs.forEach {

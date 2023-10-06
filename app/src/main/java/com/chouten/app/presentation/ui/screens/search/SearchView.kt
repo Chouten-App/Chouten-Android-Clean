@@ -123,7 +123,7 @@ fun SearchView(
 
                 when (searchResults) {
                     is Resource.Success -> {
-                        if(!searchResults.data.isNullOrEmpty()){
+                        if (!searchResults.data.isNullOrEmpty()) {
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(100.dp),
                                 contentPadding = PaddingValues(16.dp),
@@ -150,7 +150,8 @@ fun SearchView(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    "(×﹏×)", fontSize = MaterialTheme.typography.headlineLarge.fontSize
+                                    "(×﹏×)",
+                                    fontSize = MaterialTheme.typography.headlineLarge.fontSize
                                 )
                                 Text(
                                     UiText.StringRes(R.string.search_no_results).string(),
@@ -275,7 +276,7 @@ fun SearchTextField(
  * @param item SearchResult
  * @param onClick (title: String, url: String) -> Unit
  * [onClick] is a lambda that takes a URL Encoded Title & URL  of the [SearchResult]
-*/
+ */
 @Composable
 fun SearchResultItem(
     modifier: Modifier = Modifier, item: SearchResult, onClick: (title: String, url: String) -> Unit

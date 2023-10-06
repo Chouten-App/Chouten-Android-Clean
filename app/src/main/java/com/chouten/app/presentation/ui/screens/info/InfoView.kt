@@ -326,7 +326,8 @@ fun InfoView(
                             ExposedDropdownMenuBox(expanded = isSeasonDropdown, onExpandedChange = {
                                 isSeasonDropdown = it
                             }, modifier = Modifier.fillMaxWidth()) {
-                                TextField(value = infoViewModel.selectedSeason?.name ?: "Season 1",
+                                TextField(
+                                    value = infoViewModel.selectedSeason?.name ?: "Season 1",
                                     onValueChange = {},
                                     readOnly = true,
                                     trailingIcon = {
@@ -345,11 +346,12 @@ fun InfoView(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     infoResults.data?.seasons?.forEach { season ->
-                                        DropdownMenuItem(text = {
-                                            Text(
-                                                season.name
-                                            )
-                                        },
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    season.name
+                                                )
+                                            },
                                             onClick = {
                                                 isSeasonDropdown = false
                                                 // reload the viewmodel with the new data

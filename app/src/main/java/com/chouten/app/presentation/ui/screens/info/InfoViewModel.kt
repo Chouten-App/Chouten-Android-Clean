@@ -110,7 +110,7 @@ class InfoViewModel @Inject constructor(
 
     var selectedSeason: InfoResult.Season? = null
         private set
-    
+
     var seasonCount = 0
         private set
 

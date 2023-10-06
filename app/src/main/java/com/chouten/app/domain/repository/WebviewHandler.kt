@@ -2,7 +2,6 @@ package com.chouten.app.domain.repository
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import android.webkit.WebMessage
 import android.webkit.WebView
 import kotlinx.serialization.InternalSerializationApi
@@ -150,7 +149,7 @@ interface WebviewHandler<Action : Enum<Action>, ResultPayload : WebviewHandler.C
             val action: Action
         }
     }
-    }
+}
 
 
 /**
