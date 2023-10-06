@@ -42,7 +42,7 @@ class GetAllModulesUseCase @Inject constructor(
                 // Get the display name of the module
                 val displayName =
                     DocumentFile.fromTreeUri(mContext, moduleDirUri)?.name ?: return@mapNotNull null
-                
+
                 // Folders ending within .tmp have not completed the
                 // add module process and should be ignored
                 if (displayName.endsWith(".tmp")) return@mapNotNull null

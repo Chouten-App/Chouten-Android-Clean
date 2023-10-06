@@ -101,54 +101,55 @@ fun LogView(
         topBar = {
             TopAppBar(title = { Text(UiText.StringRes(R.string.app_logs).string()) },
                 navigationIcon = {
-                IconButton(onClick = {
-                    navigator.navigate(MoreViewDestination)
-                }) {
-                    Icon(
-                        Icons.Filled.ArrowBack,
-                        contentDescription = UiText.StringRes(R.string.back).string()
-                    )
-                }
-            }, actions = {
-                AnimatedVisibility(
-                    visible = logEntries.isNotEmpty()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.Top
+                    IconButton(onClick = {
+                        navigator.navigate(MoreViewDestination)
+                    }) {
+                        Icon(
+                            Icons.Filled.ArrowBack,
+                            contentDescription = UiText.StringRes(R.string.back).string()
+                        )
+                    }
+                }, actions = {
+                    AnimatedVisibility(
+                        visible = logEntries.isNotEmpty()
                     ) {
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                viewModel.exportLogs(context)?.let {
-                                    intentLauncher.launch(exportIntent(it))
+                        Row(
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    viewModel.exportLogs(context)?.let {
+                                        intentLauncher.launch(exportIntent(it))
+                                    }
                                 }
-                            }
-                        }) {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = UiText.StringRes(R.string.share_logs).string(),
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                viewModel.deleteAllLogs()
-                                snackbarLambda(
-                                    SnackbarModel(
-                                        message = UiText.StringRes(R.string.app_logs_removed)
-                                            .string(context), duration = SnackbarDuration.Short
-                                    )
+                            }) {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = UiText.StringRes(R.string.share_logs)
+                                        .string(),
                                 )
                             }
-                        }) {
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = UiText.StringRes(R.string.remove_app_logs)
-                                    .string()
-                            )
+
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    viewModel.deleteAllLogs()
+                                    snackbarLambda(
+                                        SnackbarModel(
+                                            message = UiText.StringRes(R.string.app_logs_removed)
+                                                .string(context), duration = SnackbarDuration.Short
+                                        )
+                                    )
+                                }
+                            }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = UiText.StringRes(R.string.remove_app_logs)
+                                        .string()
+                                )
+                            }
                         }
                     }
-                }
-            })
+                })
         }, modifier = Modifier
             .padding(
                 LocalAppPadding.current

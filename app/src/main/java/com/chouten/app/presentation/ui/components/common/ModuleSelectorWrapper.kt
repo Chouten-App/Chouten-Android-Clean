@@ -116,10 +116,10 @@ fun ModuleSelectorWrapper(
                         scaffoldState.bottomSheetState.hide()
                     }
                 })
-            Divider(
-                modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-            )
+                Divider(
+                    modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                )
             }
         }) {
         content()

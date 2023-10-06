@@ -1,3 +1,5 @@
 <paths>
-    <cache-path name="chouten_cache" path="." />
+    <cache-path
+        name="chouten_cache"
+        path="." />
 </paths>

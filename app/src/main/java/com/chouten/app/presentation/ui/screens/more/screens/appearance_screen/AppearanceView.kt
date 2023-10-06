@@ -241,9 +241,10 @@ fun AppearanceView(
                 )
             }
 
-            PreferenceToggle(headlineContent = {
-                Text(UiText.StringRes(R.string.use_module_colors_header).string())
-            },
+            PreferenceToggle(
+                headlineContent = {
+                    Text(UiText.StringRes(R.string.use_module_colors_header).string())
+                },
                 supportingContent = {
                     Text(UiText.StringRes(R.string.use_module_colors_desc).string())
                 },
