@@ -174,11 +174,11 @@ class InfoViewModel @Inject constructor(
                 // into a single list. This is done because we don't load all the episodes at the same
                 // time - previous episodes may be contained in the savedStateHandle and we don't want
                 // to lose them.
-                val episodes: MutableList<InfoResult.MediaListItem> =
-                    savedStateHandle.get<Resource<List<InfoResult.MediaListItem>>>("epListResults")?.data?.toMutableList()
-                        ?: mutableListOf()
+                val episodes: MutableSet<InfoResult.MediaListItem> =
+                    savedStateHandle.get<Resource<List<InfoResult.MediaListItem>>>("epListResults")?.data?.toMutableSet()
+                        ?: mutableSetOf()
                 episodes.addAll(res.result.result)
-                savedStateHandle["epListResults"] = Resource.Success(episodes)
+                savedStateHandle["epListResults"] = Resource.Success(episodes.toList())
                 if (_paginatedAll) {
                     paginatedAll = true
                 }
