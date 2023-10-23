@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.chouten.app.domain.model.LogEntry
 import kotlinx.coroutines.flow.Flow
-import java.sql.Date
+import java.sql.Timestamp
 
 @Dao
 interface LogDao {
@@ -15,11 +15,11 @@ interface LogDao {
 
     /**
      * Get all [LogEntry]s within a given range
-     * @param from: Date - The inclusive start of the range
-     * @param to: Date - The inclusive end of the range
+     * @param from: Timestamp - The inclusive start of the range
+     * @param to: Timestamp - The inclusive end of the range
      */
     @Query("SELECT * FROM LogEntry WHERE entryTimestamp BETWEEN :from AND :to")
-    suspend fun getLogWithinRange(from: Date, to: Date): List<LogEntry>
+    suspend fun getLogWithinRange(from: Timestamp, to: Timestamp): List<LogEntry>
 
     /**
      * Get a single [LogEntry] by its ID
