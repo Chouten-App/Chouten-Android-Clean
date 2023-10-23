@@ -322,7 +322,7 @@ fun SearchResultItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.FillBounds
+                contentScale = ContentScale.Crop
             )
         }
         Spacer(Modifier.height(4.dp))
