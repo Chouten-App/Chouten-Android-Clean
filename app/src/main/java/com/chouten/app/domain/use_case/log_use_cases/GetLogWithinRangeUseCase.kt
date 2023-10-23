@@ -2,13 +2,14 @@ package com.chouten.app.domain.use_case.log_use_cases
 
 import com.chouten.app.domain.repository.LogRepository
 import java.sql.Date
+import java.sql.Timestamp
 import javax.inject.Inject
 
 class GetLogWithinRangeUseCase @Inject constructor(
     private val logRepository: LogRepository
 ) {
     @Throws(IllegalArgumentException::class)
-    suspend operator fun invoke(from: Date, to: Date) {
+    suspend operator fun invoke(from: Timestamp, to: Timestamp) {
         if (from > to) {
             throw IllegalArgumentException("Cannot measure log within range where from > to")
         } else if (from > Date(System.currentTimeMillis())) {

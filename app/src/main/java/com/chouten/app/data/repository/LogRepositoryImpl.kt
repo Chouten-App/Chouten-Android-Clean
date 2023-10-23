@@ -4,7 +4,7 @@ import com.chouten.app.data.data_source.log.LogDao
 import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.repository.LogRepository
 import kotlinx.coroutines.flow.Flow
-import java.sql.Date
+import java.sql.Timestamp
 
 class LogRepositoryImpl(
     private val dao: LogDao
@@ -13,7 +13,7 @@ class LogRepositoryImpl(
         return dao.getLogs()
     }
 
-    override suspend fun getLogWithinRange(from: Date, to: Date): List<LogEntry> {
+    override suspend fun getLogWithinRange(from: Timestamp, to: Timestamp): List<LogEntry> {
         return dao.getLogWithinRange(from, to)
     }
 

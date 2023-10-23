@@ -1,16 +1,16 @@
 package com.chouten.app.common
 
 import androidx.room.TypeConverter
-import java.sql.Date
+import java.sql.Timestamp
 
 class TypeConverters {
     @TypeConverter
-    fun fromTimestamp(value: Long): Date {
-        return Date(value)
+    fun fromTimestamp(value: Long): Timestamp {
+        return Timestamp(value)
     }
 
     @TypeConverter
-    fun dateToTimestamp(date: Date): Long {
-        return date.time
+    fun dateToTimestamp(value: Timestamp): Long {
+        return value.time
     }
 }

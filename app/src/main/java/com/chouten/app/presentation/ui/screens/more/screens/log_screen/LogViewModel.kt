@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.IOException
-import java.sql.Date
+import java.sql.Timestamp
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,7 +26,7 @@ class LogViewModel @Inject constructor(
     val expanded: StateFlow<List<Int>> = _expanded
 
     suspend fun getLogById(id: Int) = logUseCases.getLogById(id)
-    suspend fun getLogInRange(from: Date, to: Date) = logUseCases.getLogInRange(from, to)
+    suspend fun getLogInRange(from: Timestamp, to: Timestamp) = logUseCases.getLogInRange(from, to)
     suspend fun insertLog(logEntry: LogEntry) = logUseCases.insertLog(logEntry)
     suspend fun deleteLogById(id: Int) {
         logUseCases.deleteLogById(id)
