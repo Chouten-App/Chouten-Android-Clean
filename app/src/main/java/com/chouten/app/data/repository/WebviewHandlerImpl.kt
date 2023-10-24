@@ -228,6 +228,7 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
      */
     @JavascriptInterface
     fun sendResult(data: String) {
+        log("sendResult: $data")
         runBlocking {
             try {
                 val parsed = resultConverter(
