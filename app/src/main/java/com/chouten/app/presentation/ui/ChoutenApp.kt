@@ -87,18 +87,24 @@ fun ChoutenApp(
     }
 
     val navigationDestination by navigator.currentDestinationAsState()
+    val isNavbarVisible = rememberSaveable(navigationDestination) {
+        when (navigationDestination?.route) {
+            InfoViewDestination.route, WatchViewDestination.route -> {
+                false
+            }
+
+            else -> {
+                true
+            }
+        }
+    }
 
     ChoutenTheme {
         Scaffold(snackbarHost = { SnackbarHost(appState.snackbarHostState) }, bottomBar = {
-            AnimatedVisibility(visible = when (navigationDestination?.route) {
-                InfoViewDestination.route, WatchViewDestination.route -> {
-                    false
-                }
-
-                else -> {
-                    true
-                }
-            }, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+            AnimatedVisibility(
+                visible = isNavbarVisible,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it }) {
                 ChoutenNavigation(navigator, navigationViewModel)
             }
         }
