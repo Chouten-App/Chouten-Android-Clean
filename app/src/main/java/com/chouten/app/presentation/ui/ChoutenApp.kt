@@ -19,6 +19,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,6 +40,7 @@ import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
 import com.ramcosta.composedestinations.utils.currentDestinationAsState
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 /**
@@ -65,8 +67,10 @@ fun ChoutenApp(
         appState.showSnackbar(snackbarModel)
     }
 
-    LaunchedEffect(Unit, filePreferences?.CHOUTEN_ROOT_DIR) {
-        if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true) {
+    LaunchedEffect(filePreferences?.CHOUTEN_ROOT_DIR) {
+        if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true && appState.viewModel.modules.firstOrNull()
+                .isNullOrEmpty()
+        ) {
             try {
                 appState.viewModel.runAsync {
                     appState.viewModel.getModules()
