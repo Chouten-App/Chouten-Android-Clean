@@ -25,7 +25,8 @@ class ModuleRepositoryImpl @Inject constructor(
      * A module is viewed as any folder in the module folder
      * Will not filter out invalid modules (e.g modules which are older than the supported version)
      * @return List<Uri>
-     * @throws IOException if the module folder cannot be read (e.g permissions)
+     * @throws IOException if the module folder cannot be read
+     * @throws SecurityException if the app does not have permission to access the module folder
      */
     override suspend fun getModuleDirs(): List<Uri> {
 
