@@ -40,8 +40,10 @@ import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
 import com.ramcosta.composedestinations.utils.currentDestinationAsState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The main entry point for the app's UI.
@@ -67,21 +69,49 @@ fun ChoutenApp(
         appState.showSnackbar(snackbarModel)
     }
 
-    LaunchedEffect(filePreferences?.CHOUTEN_ROOT_DIR) {
+    LaunchedEffect(filePreferences?.CHOUTEN_ROOT_DIR, filePreferences?.IS_CHOUTEN_MODULE_DIR_SET) {
         if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true && appState.viewModel.modules.firstOrNull()
                 .isNullOrEmpty()
         ) {
-            try {
-                appState.viewModel.runAsync {
-                    appState.viewModel.getModules()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                appState.showSnackbar(
-                    SnackbarModel(
-                        isError = true, message = e.message ?: "Unknown error"
+            appState.viewModel.runAsync {
+                try {
+                    withContext(Dispatchers.IO) {
+                        appState.viewModel.getModules()
+                    }
+                } catch (e: SecurityException) {
+                    e.printStackTrace()
+                    appState.showSnackbar(
+                        SnackbarModel(
+                            isError = true,
+                            message = UiText.StringRes(R.string.load_modules_security_exception)
+                                .string(context),
+                            customButton = SnackbarModel.SnackbarButton(
+                                onClick = {
+                                    appState.viewModel.runAsync {
+                                        context.filepathDatastore.updateData { preferences ->
+                                            preferences.copy(
+                                                IS_CHOUTEN_MODULE_DIR_SET = false
+                                            )
+                                        }
+                                    }
+                                    safPicker.launch(
+                                        // We want to use the Documents directory as the default
+                                        // If the user has a different directory set, we'll use that
+                                        context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+                                            ?.toUri()
+                                    )
+                                }, label = UiText.StringRes(R.string.change_folder).string(context)
+                            )
+                        )
                     )
-                )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    appState.showSnackbar(
+                        SnackbarModel(
+                            isError = true, message = e.message ?: "Unknown error",
+                        )
+                    )
+                }
             }
         }
     }
@@ -101,14 +131,12 @@ fun ChoutenApp(
 
     ChoutenTheme {
         Scaffold(snackbarHost = { SnackbarHost(appState.snackbarHostState) }, bottomBar = {
-            AnimatedVisibility(
-                visible = isNavbarVisible,
+            AnimatedVisibility(visible = isNavbarVisible,
                 enter = slideInVertically { it },
                 exit = slideOutVertically { it }) {
                 ChoutenNavigation(navigator, navigationViewModel)
             }
-        }
-        ) { paddingValues ->
+        }) { paddingValues ->
             // Provide the padding values as a CompositionLocal
             // This allows us to use them in the screens
 

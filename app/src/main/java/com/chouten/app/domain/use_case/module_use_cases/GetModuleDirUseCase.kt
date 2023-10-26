@@ -14,6 +14,7 @@ import javax.inject.Inject
  * @return Uri - The uri of the module directory
  * @throws ModuleFolderNotFoundException - If the module directory could not be found
  * @throws IOException - If the module directory could not be created
+ * @throws SecurityException - If the app does not have permission to access the module directory
  * @throws IllegalArgumentException - If the baseUri is invalid
  */
 class GetModuleDirUseCase @Inject constructor(

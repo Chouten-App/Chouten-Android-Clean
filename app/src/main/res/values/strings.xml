@@ -37,4 +37,6 @@
     <string name="search_error">Something went wrong; please check your internet connection and consult the logs.</string>
     <string name="search_page_no_query">Why not try searching for something?</string>
     <string name="search_no_results">Seems your search didn\'t match anything, why not try a different search query?</string>
+    <string name="load_modules_security_exception">Do not have permissions to access the module folder</string>
+    <string name="change_folder">Change Folder</string>
 </resources>
