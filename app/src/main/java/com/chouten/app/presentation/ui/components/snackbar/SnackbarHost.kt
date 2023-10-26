@@ -48,7 +48,7 @@ fun SnackbarHost(
         }, action = {
             TextButton(
                 onClick = {
-                    extendedVisuals?.customButton?.onClick?.invoke()
+                    extendedVisuals?.customButton?.onClick?.invoke().also { data.dismiss() }
                         ?: if (isError) data.dismiss() else data.performAction()
                 }, shape = MaterialTheme.shapes.extraSmall, colors = buttonColor
             ) {
