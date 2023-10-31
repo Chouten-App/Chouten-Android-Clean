@@ -15,6 +15,7 @@ import com.lagradost.nicehttp.Requests
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
@@ -37,9 +38,11 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     private lateinit var commonCode: String
 
 
+    @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        explicitNulls = false
     }
 
     /**
