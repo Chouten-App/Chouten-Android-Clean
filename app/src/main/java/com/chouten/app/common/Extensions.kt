@@ -157,3 +157,14 @@ fun Long.formatMinSec(): String {
         }
     }
 }
+
+/**
+ * [Linear Interpolation](https://en.wikipedia.org/wiki/Linear_interpolation) function that moves
+ * amount from it's current position to start and amount
+ * @param start of interval
+ * @param end of interval
+ * @param amount e closed unit interval [0, 1]
+ */
+internal fun lerp(start: Float, end: Float, amount: Float): Float {
+    return (1 - amount) * start + amount * end
+}
