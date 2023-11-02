@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.domain.proto.appearanceDatastore
 import kotlinx.coroutines.flow.firstOrNull
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -125,4 +126,34 @@ fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+/**
+ * Returns a Long formatted as HH:MM:SS (omitting hours if 0)
+ * A value of 0 (or less) will return 00:00.
+ * @return A formatted string (e.g. 01:23:45 or 23:45)
+ */
+fun Long.formatMinSec(): String {
+    return if (this <= 0L) {
+        "00:00"
+    } else {
+        // Format HH:MM::SS or MM:SS if hours is 0
+        if (TimeUnit.MILLISECONDS.toHours(this) > 0) {
+            String.format(
+                "%02d:%02d:%02d",
+                TimeUnit.MILLISECONDS.toHours(this),
+                TimeUnit.MILLISECONDS.toMinutes(this) -
+                        TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(this)),
+                TimeUnit.MILLISECONDS.toSeconds(this) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(this))
+            )
+        } else {
+            String.format(
+                "%02d:%02d",
+                TimeUnit.MILLISECONDS.toMinutes(this),
+                TimeUnit.MILLISECONDS.toSeconds(this) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(this))
+            )
+        }
+    }
 }
