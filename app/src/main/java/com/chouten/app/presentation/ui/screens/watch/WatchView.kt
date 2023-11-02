@@ -70,15 +70,6 @@ fun WatchView(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         hasExited = true
-        // Delete the files
-        appViewModel.viewModelScope.launch {
-            // TODO: In the future, we might not handle this here as we might want to keep the files
-            //  for caching purposes
-            context.cacheDir.resolve("${status.uuid}_server.json").delete()
-            context.cacheDir.resolve("${status.uuid}_sources.json").delete()
-            context.cacheDir.resolve("${status.uuid}_bundle.json").delete()
-            context.cacheDir.resolve("${status.uuid}_lock").delete()
-        }
         navigator.navigateUp()
     }
 
