@@ -4,6 +4,8 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.Rational
 import android.util.TypedValue
@@ -20,9 +22,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -48,11 +55,17 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
+import com.chouten.app.domain.model.ModuleModel
+import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.domain.proto.moduleDatastore
+import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
+import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -60,17 +73,17 @@ import okhttp3.Cache
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 @AndroidEntryPoint
-class ExoplayerActivity : ComponentActivity(), Player.Listener {
+class ExoplayerActivity : ComponentActivity() {
 
+    @Inject
+    lateinit var moduleUseCases: ModuleUseCases
+
+    private var handler = Handler(Looper.getMainLooper())
     private var aspectRatio = Rational(16, 9)
     private lateinit var exoplayer: ExoPlayer
-
-    private val isPlaying: MutableStateFlow<Boolean> = MutableStateFlow(false)
-
-    private var playbackPosition = 0L
-
     private lateinit var dataSourceFactory: DataSource.Factory
     private lateinit var mediaItem: MediaItem
 
@@ -110,6 +123,13 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
         )
     }
 
+    private val isPlaying = MutableStateFlow(false)
+    private val isBuffering = MutableStateFlow(true)
+    private val bufferedPercentage = MutableStateFlow(0)
+    private val currentPlaybackPosition = MutableStateFlow(0L)
+    private val mediaDuration = MutableStateFlow(0L)
+    private val mediaQuality = MutableStateFlow("Undefined Quality")
+    private val selectedModule = MutableStateFlow<ModuleModel?>(null)
 
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,6 +150,7 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
         }
 
         intent?.getStringExtra(UUID)?.let {
+            savedInstanceState?.putString(UUID, it)
             extractBundle(it)
         } ?: throw IllegalArgumentException("UUID for Content has not been Set")
 
@@ -137,11 +158,17 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
             lifecycleScope.launch {
                 extractBundle(it.getString(UUID, ""))
                 isPlaying.emit(it.getBoolean(IS_PLAYING))
+                currentPlaybackPosition.emit(it.getLong(PLAYBACK_POSITION))
             }
-
-            playbackPosition = it.getLong(PLAYBACK_POSITION)
         }
 
+        lifecycleScope.launch {
+            val moduleData = applicationContext.moduleDatastore.data.firstOrNull()
+            moduleUseCases.getModuleUris().find { it.id == moduleData?.selectedModuleId }
+                ?.let {
+                    selectedModule.emit(it)
+                }
+        }
         dataSourceFactory = DataSource.Factory {
             val httpDataSource = OkHttpDataSource.Factory(client.baseClient).createDataSource()
             sources.headers?.forEach {
@@ -198,9 +225,34 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
             ChoutenTheme {
                 var showPlayerUI by rememberSaveable { mutableStateOf(false) }
                 val playing by isPlaying.collectAsState()
+                val buffering by isBuffering.collectAsState()
+                val bufferedPercentage by bufferedPercentage.collectAsState()
+                val position by currentPlaybackPosition.collectAsState()
+                val duration by mediaDuration.collectAsState()
+                val quality by mediaQuality.collectAsState()
+                // This won't ever change as the selector is not available within this screen
+                val module by selectedModule.collectAsState()
+
+                val mediaTitle = remember(watchBundle.selectedMediaIndex) {
+                    // TODO: Handle server changing
+                    watchBundle.media.getOrNull(0)?.list?.getOrNull(watchBundle.selectedMediaIndex)?.title
+                        ?: "No Title Found"
+                }
+
+                val selectedMediaIndex by remember(watchBundle) {
+                    mutableIntStateOf(watchBundle.selectedMediaIndex)
+                }
+
+                val snackbarHost = remember { SnackbarHostState() }
+                val snackbarLambda = { model: SnackbarModel ->
+                    lifecycleScope.launch {
+                        snackbarHost.showSnackbar(model)
+                    }
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHost) }
                 ) {
                     Box(
                         modifier = Modifier
@@ -210,6 +262,12 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
                                 showPlayerUI = !showPlayerUI
                             },
                     ) {
+                        DisposableEffect(Unit) {
+                            val listener = ExoplayerEventHandler()
+                            exoplayer.addListener(listener)
+
+                            onDispose { exoplayer.removeListener(listener) }
+                        }
                         AndroidView(
                             factory = { ctx ->
                                 PlayerView(ctx).apply {
@@ -243,7 +301,56 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
                                         setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * 1.2f)
                                     }
                                 }
+
                             },
+                        )
+                        PlayerControls(
+                            isVisible = { showPlayerUI },
+                            isPlaying = { playing },
+                            onPauseToggle = {
+                                if (playing) {
+                                    exoplayer.pause()
+                                } else {
+                                    exoplayer.play()
+                                }
+                            },
+                            isBuffering = { buffering },
+                            bufferPercentage = { bufferedPercentage },
+                            currentModule = module?.name,
+                            title = watchBundle.mediaTitle,
+                            currentTime = { position },
+                            duration = { duration },
+                            qualityLabel = { quality },
+                            episodeTitle = mediaTitle,
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            onBackClick = {
+                                finishAndRemoveTask()
+                            },
+                            onForwardClick = {
+                                exoplayer.seekTo(position + (10 * 1000))
+                            },
+                            onNextEpisode = {
+                                if (selectedMediaIndex < ((watchBundle.media.getOrNull(0)?.list?.size)
+                                        ?: 0) - 1
+                                ) {
+                                    watchBundle = watchBundle.copy(
+                                        selectedMediaIndex = selectedMediaIndex + 1
+                                    )
+                                } else {
+                                    snackbarLambda(
+                                        SnackbarModel(
+                                            message = "No more episodes",
+                                            isError = false
+                                        )
+                                    )
+                                }
+                            },
+                            onReplayClick = {
+                                exoplayer.seekTo(position - (10 * 1000))
+                            },
+                            onSeekChanged = { time -> exoplayer.seekTo(time.toLong()) },
+                            onSettingsClick = {},
                         )
                     }
                 }
@@ -260,7 +367,7 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
             videoScalingMode = VIDEO_SCALING_MODE_SCALE_TO_FIT
             setMediaItem(mediaItem)
             prepare()
-            seekTo(playbackPosition)
+            seekTo(currentPlaybackPosition.value)
         }
         isInitialized = true
     }
@@ -268,8 +375,8 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
     private fun releasePlayer() {
         lifecycleScope.launch {
             isPlaying.emit(exoplayer.isPlaying)
+            currentPlaybackPosition.emit(exoplayer.currentPosition)
         }
-        playbackPosition = exoplayer.currentPosition
 
         isInitialized = false
         exoplayer.release()
@@ -308,10 +415,9 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
         super.onSaveInstanceState(outState)
         if (!isInitialized) return
 
-        outState.clear()
         lifecycleScope.launch {
             outState.putBoolean(IS_PLAYING, isPlaying.first())
-            outState.putLong(PLAYBACK_POSITION, playbackPosition)
+            outState.putLong(PLAYBACK_POSITION, currentPlaybackPosition.value)
         }
     }
 
@@ -345,38 +451,53 @@ class ExoplayerActivity : ComponentActivity(), Player.Listener {
         exoplayer.pause()
     }
 
-    override fun onEvents(player: Player, events: Player.Events) {
-        super.onEvents(player, events)
-
-        lifecycleScope.launch {
-            isPlaying.emit(player.isPlaying)
-        }
-        playbackPosition = player.currentPosition
-    }
-
-    override fun onRenderedFirstFrame() {
-        super.onRenderedFirstFrame()
-        val height = exoplayer.videoSize.height
-        val width = exoplayer.videoSize.width
-
-        aspectRatio = Rational(width, height)
-
-        if (exoplayer.duration < playbackPosition) {
-            exoplayer.seekTo(0)
-        }
-    }
-
-    override fun onPlaybackStateChanged(playbackState: Int) {
-        super.onPlaybackStateChanged(playbackState)
-        if (playbackState == Player.STATE_READY) {
-            exoplayer.play()
-        }
-    }
-
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         finishAndRemoveTask()
         startActivity(intent)
+    }
+
+    inner class ExoplayerEventHandler : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            super.onEvents(player, events)
+
+            lifecycleScope.launch {
+                isPlaying.emit(player.isPlaying)
+                isBuffering.emit(player.playbackState == Player.STATE_BUFFERING)
+                bufferedPercentage.emit(player.bufferedPercentage)
+                currentPlaybackPosition.emit(player.currentPosition)
+                mediaDuration.emit(player.duration)
+                mediaQuality.emit("${player.videoSize.width}x${player.videoSize.height}")
+            }
+        }
+
+        override fun onRenderedFirstFrame() {
+            super.onRenderedFirstFrame()
+            val height = exoplayer.videoSize.height
+            val width = exoplayer.videoSize.width
+
+            aspectRatio = Rational(width, height)
+
+            if (exoplayer.duration < currentPlaybackPosition.value) {
+                exoplayer.seekTo(0)
+            }
+
+            handler.postDelayed(object : Runnable {
+                override fun run() {
+                    lifecycleScope.launch {
+                        currentPlaybackPosition.emit(exoplayer.currentPosition)
+                    }
+                    handler.postDelayed(this, 1000)
+                }
+            }, 1000)
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            super.onPlaybackStateChanged(playbackState)
+            if (playbackState == Player.STATE_READY) {
+                exoplayer.play()
+            }
+        }
     }
 
     companion object {
