@@ -5,9 +5,11 @@ import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.repository.WebviewHandler
+import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -91,7 +93,8 @@ class WatchViewModel @Inject constructor(
     private val videoHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<WatchResult>>,
     private val moduleUseCases: ModuleUseCases,
     val savedStateHandle: SavedStateHandle,
-    val application: Application
+    val application: Application,
+    private val logUseCases: LogUseCases
 ) : ViewModel() {
 
     private var url: String = ""
@@ -125,6 +128,32 @@ class WatchViewModel @Inject constructor(
         savedStateHandle.getStateFlow(STATUS, WatchViewModelState.DEFAULT)
 
     init {
+        // Purge all watch data which is older than 30 minutes
+        viewModelScope.launch {
+            // TODO: Migrate to some sort of runLogging lambda
+            try {
+                application.cacheDir.listFiles()?.forEach { file ->
+                    if (file.name.endsWith("_lock")) {
+                        if (file.lastModified() >= System.currentTimeMillis() - 30 * 60 * 1000) return@forEach
+                        // Destroy the lock file and all associated data
+                        val uuid = file.name.removeSuffix("_lock")
+                        application.cacheDir.resolve("${uuid}_server.json").delete()
+                        application.cacheDir.resolve("${uuid}_sources.json").delete()
+                        application.cacheDir.resolve("${uuid}_bundle.json").delete()
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                logUseCases.insertLog(
+                    LogEntry(
+                        entryHeader = "Failure Clearing Caches",
+                        entryContent =
+                        "Failed to purge watch data: ${e.message}"
+                    )
+                )
+            }
+        }
+
         viewModelScope.launch {
             serverHandler.initialize(application) { res ->
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
