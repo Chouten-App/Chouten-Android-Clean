@@ -192,3 +192,9 @@ internal fun scale(
         start2,
         end2
     )
+
+/**
+ * Calculate fraction for value between a range [end] and [start] coerced into 0f-1f range
+ */
+fun calculateFraction(start: Float, end: Float, pos: Float) =
+    (if (end - start == 0f) 0f else (pos - start) / (end - start)).coerceIn(0f, 1f)
