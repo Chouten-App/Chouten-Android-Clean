@@ -86,6 +86,7 @@ import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination(
@@ -393,13 +394,20 @@ fun InfoView(
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
                                             Modifier.clickable {
-                                                navigator.navigate(WatchViewDestination(
-                                                    WatchBundle(
-                                                        media = infoResults.data?.mediaList ?: listOf(),
-                                                        selectedMediaIndex = index,
-                                                        url = item.url
+                                                navigator.navigate(
+                                                    WatchViewDestination(
+                                                        WatchBundle(
+                                                            media = infoResults.data?.mediaList
+                                                                ?: listOf(),
+                                                            selectedMediaIndex = index,
+                                                            url = item.url,
+                                                            mediaTitle = URLDecoder.decode(
+                                                                title,
+                                                                "UTF-8"
+                                                            )
+                                                        )
                                                     )
-                                                ))
+                                                )
                                             })
                                     }
                                 }

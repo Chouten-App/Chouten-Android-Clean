@@ -38,6 +38,7 @@ data class WatchBundle(
     val media: List<InfoResult.MediaListItem>,
     val url: String,
     val selectedMediaIndex: Int,
+    val mediaTitle: String,
 )
 
 @Composable
