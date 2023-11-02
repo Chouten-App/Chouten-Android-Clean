@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -60,6 +59,7 @@ import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
+import com.chouten.app.presentation.ui.screens.info.InfoResult
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.AndroidEntryPoint
@@ -89,6 +89,7 @@ class ExoplayerActivity : ComponentActivity() {
 
     private var isInitialized = false
 
+    private lateinit var media: List<InfoResult.MediaListItem>
     private lateinit var watchBundle: WatchBundle
     private lateinit var sources: WatchResult
     private lateinit var servers: List<WatchResult.ServerData>
@@ -149,14 +150,16 @@ class ExoplayerActivity : ComponentActivity() {
             onDestroy()
         }
 
-        intent?.getStringExtra(UUID)?.let {
-            savedInstanceState?.putString(UUID, it)
-            extractBundle(it)
+        intent?.getStringExtra(BUNDLE)?.let {
+            val bundle = Json.decodeFromString<WatchBundle>(it)
+            savedInstanceState?.putString(BUNDLE, it)
+            extractBundle(bundle)
         } ?: throw IllegalArgumentException("UUID for Content has not been Set")
 
         savedInstanceState?.let {
             lifecycleScope.launch {
-                extractBundle(it.getString(UUID, ""))
+                val bundle = Json.decodeFromString<WatchBundle>(it.getString(BUNDLE, ""))
+                extractBundle(bundle)
                 isPlaying.emit(it.getBoolean(IS_PLAYING))
                 currentPlaybackPosition.emit(it.getLong(PLAYBACK_POSITION))
             }
@@ -235,7 +238,7 @@ class ExoplayerActivity : ComponentActivity() {
 
                 val mediaTitle = remember(watchBundle.selectedMediaIndex) {
                     // TODO: Handle server changing
-                    watchBundle.media.getOrNull(0)?.list?.getOrNull(watchBundle.selectedMediaIndex)?.title
+                    media.getOrNull(0)?.list?.getOrNull(watchBundle.selectedMediaIndex)?.title
                         ?: "No Title Found"
                 }
 
@@ -331,7 +334,7 @@ class ExoplayerActivity : ComponentActivity() {
                                 exoplayer.seekTo(position + (10 * 1000))
                             },
                             onNextEpisode = {
-                                if (selectedMediaIndex < ((watchBundle.media.getOrNull(0)?.list?.size)
+                                if (selectedMediaIndex < ((media.getOrNull(0)?.list?.size)
                                         ?: 0) - 1
                                 ) {
                                     watchBundle = watchBundle.copy(
@@ -383,12 +386,14 @@ class ExoplayerActivity : ComponentActivity() {
     }
 
     @kotlin.OptIn(ExperimentalSerializationApi::class)
-    private fun extractBundle(uuid: String) {
+    private fun extractBundle(bundle: WatchBundle) {
         val json = Json {
             ignoreUnknownKeys = true
             isLenient = true
             explicitNulls = false
         }
+
+        val uuid = bundle.mediaUuid
 
         lifecycleScope.launch {
             // Read the files and get the data
@@ -402,12 +407,13 @@ class ExoplayerActivity : ComponentActivity() {
                 val result = json.decodeFromString<WatchResult>(text)
                 sources = result
             }
-            cacheDir.resolve("${uuid}_bundle.json").useLines { lines ->
+            cacheDir.resolve("${uuid}_media.json").useLines { lines ->
                 val text = lines.joinToString("\n")
-                val result = json.decodeFromString<WatchBundle>(text)
-                watchBundle = result
+                val result = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                media = result
             }
         }
+        watchBundle = bundle
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -503,6 +509,6 @@ class ExoplayerActivity : ComponentActivity() {
     companion object {
         const val IS_PLAYING = "is_playing"
         const val PLAYBACK_POSITION = "playback_position"
-        const val UUID = "uuid"
+        const val BUNDLE = "bundle"
     }
 }

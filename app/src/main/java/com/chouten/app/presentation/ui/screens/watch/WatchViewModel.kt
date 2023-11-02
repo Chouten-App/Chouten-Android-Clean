@@ -11,6 +11,7 @@ import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.repository.WebviewHandler
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
+import com.chouten.app.presentation.ui.screens.info.InfoResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
@@ -21,7 +22,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.IOException
-import java.util.UUID
 import javax.inject.Inject
 
 @Serializable
@@ -71,18 +71,14 @@ data class WatchResult(
 @Serializable
 @Parcelize
 data class WatchViewModelState(
-    val uuid: String?,
     val isServerSet: Boolean,
     val isSourceSet: Boolean,
-    val isBundleSet: Boolean,
     val error: List<String> = listOf()
 ) : Parcelable {
     companion object {
         val DEFAULT = WatchViewModelState(
-            uuid = null,
             isServerSet = false,
-            isSourceSet = false,
-            isBundleSet = false
+            isSourceSet = false
         )
     }
 }
@@ -106,26 +102,13 @@ class WatchViewModel @Inject constructor(
         explicitNulls = false
     }
 
-    /**
-     * Prefix for the files used to store the media data
-     * The sources, servers and bundle are stored within their own <PREFIX>_<source|server|bundle>.json files
-     */
-    // TODO: Look into using this to determine if we should re-fetch the data
-    private val FILE_PREFIX: UUID = UUID.randomUUID().let {
-        // Check if a lock file exists for the current media
-        // If it does, we can't use the UUID
-        var uuid = it
-        while (application.cacheDir.resolve("${uuid}_lock").exists()) {
-            // If it does, we generate a new UUID
-            uuid = UUID.randomUUID()
-        }
-        application.cacheDir.resolve("${uuid}_lock").createNewFile()
-        savedStateHandle[STATUS] = WatchViewModelState.DEFAULT.copy(uuid = uuid.toString())
-        uuid
-    }
-
     val status: StateFlow<WatchViewModelState> =
         savedStateHandle.getStateFlow(STATUS, WatchViewModelState.DEFAULT)
+
+    val FILE_PREFIX = WatchView.FILE_PREFIX
+
+    // We store the media here since it MAY be too large to store in the savedStateHandle
+    var media: List<InfoResult.MediaListItem> = listOf()
 
     init {
         // Purge all watch data which is older than 30 minutes
@@ -137,9 +120,13 @@ class WatchViewModel @Inject constructor(
                         if (file.lastModified() >= System.currentTimeMillis() - 30 * 60 * 1000) return@forEach
                         // Destroy the lock file and all associated data
                         val uuid = file.name.removeSuffix("_lock")
+
+                        // Don't destroy the in-use files
+                        if (uuid == FILE_PREFIX) return@forEach
+
                         application.cacheDir.resolve("${uuid}_server.json").delete()
                         application.cacheDir.resolve("${uuid}_sources.json").delete()
-                        application.cacheDir.resolve("${uuid}_bundle.json").delete()
+                        application.cacheDir.resolve("${uuid}_media.json").delete()
                         file.delete()
                     }
                 }
@@ -151,6 +138,25 @@ class WatchViewModel @Inject constructor(
                         "Failed to purge watch data: ${e.message}"
                     )
                 )
+            }
+        }
+
+        // Get the Media Data
+        viewModelScope.launch {
+            try {
+                application.cacheDir.resolve("${FILE_PREFIX}_media.json").useLines { lines ->
+                    val text = lines.joinToString("\n")
+                    media = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                }
+            } catch (e: Exception) {
+                logUseCases.insertLog(
+                    LogEntry(
+                        entryHeader = "Failure Loading Media",
+                        entryContent =
+                        "Failed to load media data: ${e.message}"
+                    )
+                )
+                media = listOf()
             }
         }
 
@@ -227,8 +233,8 @@ class WatchViewModel @Inject constructor(
     }
 
     suspend fun getServers(bundle: WatchBundle, bundleId: Int) {
-        url = bundle.media.getOrNull(0)?.list?.getOrElse(bundleId) {
-            if (bundle.media.isEmpty()) {
+        url = media.getOrNull(0)?.list?.getOrElse(bundleId) {
+            if (media.isEmpty()) {
                 null
             } else throw IllegalArgumentException("Selected media index is out of bounds")
         }?.url ?: bundle.url
@@ -246,18 +252,6 @@ class WatchViewModel @Inject constructor(
                 action = Payloads_V2.Action_V2.GET_VIDEO, query = url
             )
         )
-    }
-
-    fun setBundle(bundle: WatchBundle) {
-        viewModelScope.launch {
-            // We should also create the file for the bundle
-            application.cacheDir.resolve("${FILE_PREFIX}_bundle.json").bufferedWriter().use {
-                it.write(json.encodeToString(bundle))
-            }
-            savedStateHandle[STATUS] = status.firstOrNull()?.copy(
-                isBundleSet = true
-            )
-        }
     }
 
     companion object {

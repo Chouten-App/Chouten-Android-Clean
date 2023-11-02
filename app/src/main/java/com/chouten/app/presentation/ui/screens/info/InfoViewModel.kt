@@ -20,8 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
+import java.util.UUID
 import javax.inject.Inject
 
 @Serializable
@@ -113,6 +115,23 @@ class InfoViewModel @Inject constructor(
 
     var seasonCount = 0
         private set
+
+    /**
+     * Prefix for the files used to store the media data
+     * The sources, servers and bundle are stored within their own <PREFIX>_<source|server|bundle>.json files
+     */
+    // TODO: Look into using this to determine if we should re-fetch the data
+    val FILE_PREFIX: UUID = UUID.randomUUID().let {
+        // Check if a lock file exists for the current media
+        // If it does, we can't use the UUID
+        var uuid = it
+        while (application.cacheDir.resolve("${uuid}_lock").exists()) {
+            // If it does, we generate a new UUID
+            uuid = UUID.randomUUID()
+        }
+        application.cacheDir.resolve("${uuid}_lock").createNewFile()
+        uuid
+    }
 
     init {
         viewModelScope.launch {
@@ -210,6 +229,20 @@ class InfoViewModel @Inject constructor(
                     entryHeader = title, entryContent = content
                 )
             )
+        }
+    }
+
+    suspend fun saveMediaBundle() {
+        val media = infoResults.firstOrNull()?.data?.mediaList?.plus(
+            episodeList.firstOrNull()?.data ?: emptyList()
+        ) ?: emptyList()
+        withContext(Dispatchers.IO) {
+            application.applicationContext.cacheDir.resolve("${FILE_PREFIX}_media.json")
+                .bufferedWriter().use {
+                    it.write(
+                        Json.encodeToString(media)
+                    )
+                }
         }
     }
 }
