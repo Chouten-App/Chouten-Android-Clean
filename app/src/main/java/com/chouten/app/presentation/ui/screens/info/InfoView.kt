@@ -81,6 +81,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import com.chouten.app.common.Navigation
 import com.chouten.app.common.Resource
 import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
 import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
@@ -98,6 +99,7 @@ fun InfoView(
     title: String,
     url: String,
     snackbarLambda: (SnackbarModel) -> Unit,
+    appViewModel: ChoutenAppViewModel = hiltViewModel(),
     infoViewModel: InfoViewModel = hiltViewModel()
 ) {
     val infoResults by infoViewModel.infoResults.collectAsState()
@@ -394,18 +396,24 @@ fun InfoView(
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
                                             Modifier.clickable {
+                                                val bundle =
+                                                    WatchBundle(
+                                                        mediaUuid = infoViewModel.FILE_PREFIX.toString(),
+                                                        selectedMediaIndex = index,
+                                                        url = item.url,
+                                                        mediaTitle = URLDecoder.decode(
+                                                            title,
+                                                            "UTF-8"
+                                                        )
+                                                    )
+
+                                                appViewModel.runAsync {
+                                                    infoViewModel.saveMediaBundle()
+                                                }
+
                                                 navigator.navigate(
                                                     WatchViewDestination(
-                                                        WatchBundle(
-                                                            media = infoResults.data?.mediaList
-                                                                ?: listOf(),
-                                                            selectedMediaIndex = index,
-                                                            url = item.url,
-                                                            mediaTitle = URLDecoder.decode(
-                                                                title,
-                                                                "UTF-8"
-                                                            )
-                                                        )
+                                                        bundle
                                                     )
                                                 )
                                             })

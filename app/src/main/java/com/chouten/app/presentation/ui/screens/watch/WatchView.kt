@@ -25,17 +25,17 @@ import androidx.lifecycle.viewModelScope
 import com.chouten.app.common.Navigation
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
-import com.chouten.app.presentation.ui.screens.info.InfoResult
 import com.chouten.app.presentation.ui.screens.watch.WatchViewModel.Companion.STATUS
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
 data class WatchBundle(
-    val media: List<InfoResult.MediaListItem>,
+    val mediaUuid: String,
     val url: String,
     val selectedMediaIndex: Int,
     val mediaTitle: String,
@@ -53,8 +53,8 @@ fun WatchView(
     appViewModel: ChoutenAppViewModel
 ) {
     val context = LocalContext.current
+    WatchView.FILE_PREFIX = bundle.mediaUuid
     val watchViewModel: WatchViewModel = hiltViewModel<WatchViewModel>()
-    watchViewModel.setBundle(bundle)
 
     var hasExited by rememberSaveable { mutableStateOf(false) }
 
@@ -95,7 +95,7 @@ fun WatchView(
         } else {
             if (servers == null) {
                 watchViewModel.viewModelScope.launch {
-                    context.cacheDir.resolve("${status.uuid}_server.json").useLines { lines ->
+                    context.cacheDir.resolve("${bundle.mediaUuid}_server.json").useLines { lines ->
                         val text = lines.joinToString("\n")
                         val result = Json.decodeFromString<List<WatchResult.ServerData>>(text)
                         servers = result
@@ -108,11 +108,11 @@ fun WatchView(
             }
         }
 
-        if (status.isSourceSet && status.isBundleSet) {
+        if (status.isSourceSet) {
             if (hasExited) return@LaunchedEffect
 
             playerLauncher.launch(Intent(context, ExoplayerActivity::class.java).apply {
-                putExtra(ExoplayerActivity.UUID, status.uuid)
+                putExtra(ExoplayerActivity.BUNDLE, Json.encodeToString(bundle))
             })
         }
     }
@@ -128,4 +128,8 @@ fun WatchView(
             )
         }
     }
+}
+
+object WatchView {
+    var FILE_PREFIX: String = ""
 }
