@@ -16,13 +16,28 @@ import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,9 +46,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
@@ -130,6 +147,7 @@ class ExoplayerActivity : ComponentActivity() {
     private val currentPlaybackPosition = MutableStateFlow(0L)
     private val mediaDuration = MutableStateFlow(0L)
     private val mediaQuality = MutableStateFlow("Undefined Quality")
+    private val currentSkip = MutableStateFlow<Pair<String, Long>?>(null)
     private val selectedModule = MutableStateFlow<ModuleModel?>(null)
 
     @OptIn(UnstableApi::class)
@@ -232,6 +250,7 @@ class ExoplayerActivity : ComponentActivity() {
                 val bufferedPercentage by bufferedPercentage.collectAsState()
                 val position by currentPlaybackPosition.collectAsState()
                 val duration by mediaDuration.collectAsState()
+                val skip by currentSkip.collectAsState()
                 val quality by mediaQuality.collectAsState()
                 // This won't ever change as the selector is not available within this screen
                 val module by selectedModule.collectAsState()
@@ -253,10 +272,14 @@ class ExoplayerActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    snackbarHost = { SnackbarHost(snackbarHost) }
-                ) {
+                val skipButtonBtmPadding by animateDpAsState(
+                    if (showPlayerUI) 64.dp else 48.dp,
+                    tween(durationMillis = 350, easing = EaseInOut),
+                    "Skip Button Padding"
+                )
+
+                Scaffold(modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHost) }) { it ->
                     Box(
                         modifier = Modifier
                             .padding(it)
@@ -307,6 +330,7 @@ class ExoplayerActivity : ComponentActivity() {
 
                             },
                         )
+
                         PlayerControls(
                             isVisible = { showPlayerUI },
                             isPlaying = { playing },
@@ -355,6 +379,39 @@ class ExoplayerActivity : ComponentActivity() {
                             onSeekChanged = { time -> exoplayer.seekTo(time.toLong()) },
                             onSettingsClick = {},
                         )
+
+                        AnimatedVisibility(
+                            visible = skip != null,
+                            modifier = Modifier
+                                .padding(horizontal = 48.dp, skipButtonBtmPadding)
+                                .align(Alignment.BottomEnd),
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            val (skipLabel, skipTime) = skip ?: return@AnimatedVisibility
+                            FilledTonalButton(
+                                onClick = {
+                                    lifecycleScope.launch {
+                                        currentSkip.emit(null)
+                                    }
+                                    exoplayer.seekTo(skipTime)
+
+                                },
+                                shape = RoundedCornerShape(4.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color.White.copy(alpha = 0.9f),
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(Icons.Default.FastForward, null)
+                                    Text(text = "Skip $skipLabel")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -492,6 +549,17 @@ class ExoplayerActivity : ComponentActivity() {
                 override fun run() {
                     lifecycleScope.launch {
                         currentPlaybackPosition.emit(exoplayer.currentPosition)
+                        currentSkip.emit(null)
+                        sources.skips?.firstOrNull {
+                            // The modules provide the values in seconds, but the player uses milliseconds
+                            // So we need to multiply / divide by 1000
+                            // We add one to the start time to prevent the player from showing
+                            // the popup instantly.
+                            ((it.start + 1)..<it.end).contains(exoplayer.currentPosition.toDouble() / 1000)
+                        }?.let {
+                            // Show skip button
+                            currentSkip.emit(Pair(it.type, it.end.toLong() * 1000))
+                        }
                     }
                     handler.postDelayed(this, 1000)
                 }
