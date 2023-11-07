@@ -6,7 +6,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.util.Rational
 import android.util.TypedValue
 import android.view.ViewGroup
@@ -514,7 +513,6 @@ class ExoplayerActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        Log.d("ExoplayerActivity", "Saving instance state $outState")
         super.onSaveInstanceState(outState)
         if (!isInitialized) return
 
