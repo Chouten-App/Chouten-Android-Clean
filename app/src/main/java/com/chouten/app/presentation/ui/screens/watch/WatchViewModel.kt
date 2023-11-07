@@ -67,7 +67,6 @@ data class WatchResult(
     ) : Parcelable
 }
 
-// TODO: Add documentation
 @Serializable
 @Parcelize
 data class WatchViewModelState(
