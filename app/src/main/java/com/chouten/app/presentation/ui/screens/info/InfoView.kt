@@ -407,6 +407,9 @@ fun InfoView(
                                                         )
                                                     )
 
+                                                // We must run using the appViewModel's coroutine scope
+                                                // since the InfoViewModel will be destroyed when we
+                                                // navigate to the WatchView
                                                 appViewModel.runAsync {
                                                     infoViewModel.saveMediaBundle()
                                                 }
