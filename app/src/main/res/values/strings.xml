@@ -39,4 +39,7 @@
     <string name="search_no_results">Seems your search didn\'t match anything, why not try a different search query?</string>
     <string name="load_modules_security_exception">Do not have permissions to access the module folder</string>
     <string name="change_folder">Change Folder</string>
+    <string name="skip_button_label">Skip %1$s</string>
+    <string name="no_more_media">No more Media found</string>
+    <string name="no_title_found">No Title Found</string>
 </resources>
