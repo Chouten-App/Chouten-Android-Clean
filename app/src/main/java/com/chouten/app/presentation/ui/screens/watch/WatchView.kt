@@ -33,6 +33,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/**
+ * Watch Bundle used for passing around the necessary data for a watch session.
+ * @param mediaUuid The UUID of the media to watch. References files within the app's cache directory.
+ * (e.g <mediaUuid>_server.json, <mediaUuid>_source.json)
+ * @param url The url of the media selected from the [InfoView].
+ * @param selectedMediaIndex The index of the media selected from the [InfoView]. (e.g. 0 for the first media)
+ * @param mediaTitle The title of the media selected from the [InfoView].
+ */
 @Serializable
 data class WatchBundle(
     val mediaUuid: String,
@@ -56,6 +64,9 @@ fun WatchView(
     WatchView.FILE_PREFIX = bundle.mediaUuid
     val watchViewModel: WatchViewModel = hiltViewModel<WatchViewModel>()
 
+    /**
+     * Whether the player activity has exited.
+     */
     var hasExited by rememberSaveable { mutableStateOf(false) }
 
     val status by watchViewModel.savedStateHandle.getStateFlow(
@@ -71,6 +82,7 @@ fun WatchView(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         hasExited = true
+        // Return to the previous screen if the player activity has exited
         navigator.navigateUp()
     }
 
@@ -86,6 +98,8 @@ fun WatchView(
         }
 
         if (!status.isServerSet) {
+            // We want to use the viewmodel scope here since we don't
+            // want the server handler to be cancelled when the view is recomposed
             watchViewModel.viewModelScope.launch {
                 watchViewModel.getServers(
                     bundle,
@@ -94,6 +108,8 @@ fun WatchView(
             }
         } else {
             if (servers == null) {
+                // We want to use the viewmodel scope here since we don't
+                // want the server handler to be cancelled when the view is recomposed
                 watchViewModel.viewModelScope.launch {
                     context.cacheDir.resolve("${bundle.mediaUuid}_server.json").useLines { lines ->
                         val text = lines.joinToString("\n")
@@ -109,6 +125,7 @@ fun WatchView(
         }
 
         if (status.isSourceSet) {
+            // We don't want to end up in a loop where the user cannot exit the player activity
             if (hasExited) return@LaunchedEffect
 
             playerLauncher.launch(Intent(context, ExoplayerActivity::class.java).apply {
