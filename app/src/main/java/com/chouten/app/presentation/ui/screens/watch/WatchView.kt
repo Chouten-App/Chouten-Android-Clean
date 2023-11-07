@@ -24,7 +24,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import com.chouten.app.common.Navigation
 import com.chouten.app.domain.model.SnackbarModel
-import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.chouten.app.presentation.ui.screens.watch.WatchViewModel.Companion.STATUS
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -57,8 +56,7 @@ data class WatchBundle(
 fun WatchView(
     navigator: DestinationsNavigator,
     bundle: WatchBundle,
-    snackbarLambda: (SnackbarModel) -> Unit,
-    appViewModel: ChoutenAppViewModel
+    snackbarLambda: (SnackbarModel) -> Unit
 ) {
     val context = LocalContext.current
     WatchView.FILE_PREFIX = bundle.mediaUuid
