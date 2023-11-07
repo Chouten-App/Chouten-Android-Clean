@@ -5,6 +5,8 @@ import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chouten.app.R
+import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.proto.moduleDatastore
@@ -165,7 +167,10 @@ class WatchViewModel @Inject constructor(
                     viewModelScope.launch {
                         val statusValue = status.firstOrNull()
                         savedStateHandle[STATUS] = statusValue?.copy(
-                            error = statusValue.error + "Failed to get servers for $url"
+                            error = statusValue.error + application.getString(
+                                R.string.failed_server_retrieval,
+                                url
+                            )
                         )
                     }
                     return@initialize
@@ -196,7 +201,10 @@ class WatchViewModel @Inject constructor(
                     viewModelScope.launch {
                         val statusValue = status.firstOrNull()
                         savedStateHandle[STATUS] = statusValue?.copy(
-                            error = statusValue.error + "Failed to get sources for $url"
+                            error = statusValue.error + application.getString(
+                                R.string.failed_source_retrieval,
+                                url
+                            )
                         )
                     }
                     return@initialize
@@ -235,7 +243,9 @@ class WatchViewModel @Inject constructor(
         url = media.getOrNull(0)?.list?.getOrElse(bundleId) {
             if (media.isEmpty()) {
                 null
-            } else throw IllegalArgumentException("Selected media index is out of bounds")
+            } else throw IllegalArgumentException(
+                UiText.StringRes(R.string.media_index_bounds_error).string(application)
+            )
         }?.url ?: bundle.url
 
         serverHandler.load(

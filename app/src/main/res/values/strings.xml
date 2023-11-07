@@ -43,4 +43,7 @@
     <string name="no_more_media">No more Media found</string>
     <string name="no_title_found">No Title Found</string>
     <string name="no_module">No Module</string>
+    <string name="failed_server_retrieval">Failed to get servers for %1$s</string>
+    <string name="failed_source_retrieval">Failed to get sources for %1$s</string>
+    <string name="media_index_bounds_error">Selected media index is out of bounds</string>
 </resources>
