@@ -70,6 +70,7 @@ fun ChoutenApp(
     }
 
     LaunchedEffect(filePreferences?.CHOUTEN_ROOT_DIR, filePreferences?.IS_CHOUTEN_MODULE_DIR_SET) {
+        // If the module directory is set but the modules haven't been loaded yet, load them
         if (filePreferences?.IS_CHOUTEN_MODULE_DIR_SET == true && appState.viewModel.modules.firstOrNull()
                 .isNullOrEmpty()
         ) {
@@ -79,6 +80,8 @@ fun ChoutenApp(
                         appState.viewModel.getModules()
                     }
                 } catch (e: SecurityException) {
+                    // If we get a security exception, we are not able to read the folder with the current
+                    // permissions and must prompt the user to change the folder / grant permissions
                     e.printStackTrace()
                     appState.showSnackbar(
                         SnackbarModel(
@@ -87,6 +90,8 @@ fun ChoutenApp(
                                 .string(context),
                             customButton = SnackbarModel.SnackbarButton(
                                 onClick = {
+                                    // Reset the module directory
+                                    // so they are forced to select a new one on next launch (if they don't after this)
                                     appState.viewModel.runAsync {
                                         context.filepathDatastore.updateData { preferences ->
                                             preferences.copy(
