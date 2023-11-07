@@ -102,13 +102,13 @@ class WatchViewModel @Inject constructor(
         explicitNulls = false
     }
 
-    val status: StateFlow<WatchViewModelState> =
+    private val status: StateFlow<WatchViewModelState> =
         savedStateHandle.getStateFlow(STATUS, WatchViewModelState.DEFAULT)
 
-    val FILE_PREFIX = WatchView.FILE_PREFIX
+    private val FILE_PREFIX = WatchView.FILE_PREFIX
 
     // We store the media here since it MAY be too large to store in the savedStateHandle
-    var media: List<InfoResult.MediaListItem> = listOf()
+    private var media: List<InfoResult.MediaListItem> = listOf()
 
     init {
         // Purge all watch data which is older than 30 minutes
