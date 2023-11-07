@@ -49,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.chouten.app.R
+import com.chouten.app.common.UiText
 import com.chouten.app.common.formatMinSec
 import com.chouten.app.presentation.ui.components.common.NoRippleInteractionSource
 
@@ -203,7 +205,7 @@ fun TopControls(
             horizontalAlignment = Alignment.End
         ) {
             Text(
-                text = currentModule ?: "No Module",
+                text = currentModule ?: UiText.StringRes(R.string.no_module).string(),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = Color.White
                 ),
