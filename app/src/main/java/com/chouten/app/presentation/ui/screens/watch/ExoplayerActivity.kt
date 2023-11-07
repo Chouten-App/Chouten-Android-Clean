@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -71,6 +72,8 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
+import com.chouten.app.R
+import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.moduleDatastore
@@ -288,7 +291,7 @@ class ExoplayerActivity : ComponentActivity() {
                 val mediaTitle = remember(watchBundle.selectedMediaIndex) {
                     // TODO: Handle server changing
                     media.getOrNull(0)?.list?.getOrNull(watchBundle.selectedMediaIndex)?.title
-                        ?: "No Title Found"
+                        ?: UiText.StringRes(R.string.no_title_found).string(this)
                 }
 
                 val selectedMediaIndex by remember(watchBundle) {
@@ -397,7 +400,8 @@ class ExoplayerActivity : ComponentActivity() {
                                 } else {
                                     snackbarLambda(
                                         SnackbarModel(
-                                            message = "No more episodes",
+                                            message = UiText.StringRes(R.string.no_more_media)
+                                                .string(this@ExoplayerActivity),
                                             isError = false
                                         )
                                     )
@@ -439,7 +443,12 @@ class ExoplayerActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     Icon(Icons.Default.FastForward, null)
-                                    Text(text = "Skip $skipLabel")
+                                    Text(
+                                        text = stringResource(
+                                            R.string.skip_button_label,
+                                            skipLabel
+                                        )
+                                    )
                                 }
                             }
                         }
