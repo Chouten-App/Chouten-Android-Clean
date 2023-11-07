@@ -95,15 +95,37 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ExoplayerActivity : ComponentActivity() {
 
+    /**
+     * Used for detecting the currently selected Module
+     */
     @Inject
     lateinit var moduleUseCases: ModuleUseCases
 
+    /**
+     * The handler is used to recursively check & update the playback position
+     */
     private var handler = Handler(Looper.getMainLooper())
+
+    /**
+     * The aspect ratio of the video, defaulting to 16:9 (16/9)
+     */
     private var aspectRatio = Rational(16, 9)
     private lateinit var exoplayer: ExoPlayer
+
+    /**
+     * Used to construct the [DataSource] for the [ExoPlayer].
+     * Allows for custom headers to be set and used when requesting the media.
+     */
     private lateinit var dataSourceFactory: DataSource.Factory
+
+    /**
+     * The [MediaItem] to be played by the [ExoPlayer]
+     */
     private lateinit var mediaItem: MediaItem
 
+    /**
+     * Is the ExoPlayer initialized? Used to prevent the player from being initialized multiple times
+     */
     private var isInitialized = false
 
     private lateinit var media: List<InfoResult.MediaListItem>
@@ -113,6 +135,9 @@ class ExoplayerActivity : ComponentActivity() {
 
     private lateinit var mimeType: String
 
+    /**
+     * HTTP client with a 5MiB cache and a default cache time of 30 minutes
+     */
     private val client by lazy {
         val context = application.applicationContext
         val cache = Cache(
@@ -154,7 +179,10 @@ class ExoplayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Use the entire screen
         enableEdgeToEdge()
+
+        // Hide the system bars (status bar and navigation bar)
         val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 
         insetsController.apply {
@@ -190,6 +218,8 @@ class ExoplayerActivity : ComponentActivity() {
                     selectedModule.emit(it)
                 }
         }
+
+        // Loop through the headers of the source and use them within the DataSource
         dataSourceFactory = DataSource.Factory {
             val httpDataSource = OkHttpDataSource.Factory(client.baseClient).createDataSource()
             sources.headers?.forEach {
@@ -392,6 +422,7 @@ class ExoplayerActivity : ComponentActivity() {
                             FilledTonalButton(
                                 onClick = {
                                     lifecycleScope.launch {
+                                        // Reset the skip button.
                                         currentSkip.emit(null)
                                     }
                                     exoplayer.seekTo(skipTime)
