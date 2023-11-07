@@ -94,6 +94,10 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
+/**
+ * Exoplayer Activity used for playing media defined in a [WatchBundle].
+ * @see [WatchBundle]
+ */
 @AndroidEntryPoint
 class ExoplayerActivity : ComponentActivity() {
 
