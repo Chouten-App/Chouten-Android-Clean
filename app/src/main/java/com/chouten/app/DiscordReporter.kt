@@ -1,6 +1,7 @@
 package com.chouten.app
 
 import android.content.Context
+import android.util.Log
 import android.webkit.MimeTypeMap
 import com.chouten.app.domain.proto.CrashReport
 import com.chouten.app.domain.proto.CrashReportUUID
@@ -253,6 +254,10 @@ class DiscordReporter(
                     }.build()
                 ).apply {
                     if (!isSuccessful && code != 200) {
+                        Log.e(
+                            "DiscordReporter",
+                            "Failed to send crash report to the Developers! Code: $code"
+                        )
                         context.crashReportStore.updateData { preferences ->
                             preferences.copy(
                                 unsentCrashReport = CrashReport(
