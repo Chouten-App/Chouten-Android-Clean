@@ -1,5 +1,7 @@
 [versions]
 agp = "8.3.0-alpha05"
+acraHttp = "5.11.3"
+autoService = "1.1.1"
 coilCompose = "2.4.0"
 core = "1.9.42-beta"
 datastore = "1.0.0"
@@ -24,6 +26,8 @@ serialization = "1.9.0"
 nicehttp = "+"
 
 [libraries]
+acra-http = { module = "ch.acra:acra-http", version.ref = "acraHttp" }
+acra-toast = { module = "ch.acra:acra-toast", version.ref = "acraHttp" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
 androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
@@ -37,6 +41,8 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+auto-service = { module = "com.google.auto.service:auto-service", version.ref = "autoService" }
+auto-service-annotations = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 core = { module = "io.github.raamcosta.compose-destinations:core", version.ref = "core" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }

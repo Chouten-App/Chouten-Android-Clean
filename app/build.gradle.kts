@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
@@ -8,9 +10,17 @@ plugins {
     id("kotlin-parcelize")
 }
 
+val properties = Properties().apply {
+    load(rootProject.file("local.properties").reader())
+}
+
 android {
     namespace = "com.chouten.app"
     compileSdk = 34
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.chouten.app"
@@ -18,6 +28,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.0.1"
+        buildConfigField("String", "WEBHOOK_URL", "\"${properties.getProperty("bug_webhook")}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -114,6 +125,10 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.datasource.okhttp)
+    implementation(libs.acra.http)
+    implementation(libs.acra.toast)
+    kapt(libs.auto.service)
+    compileOnly(libs.auto.service.annotations)
 }
 
 kapt {
