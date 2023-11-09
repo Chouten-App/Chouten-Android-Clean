@@ -156,17 +156,21 @@ class DiscordReporter(
                         embeds = listOf(
                             DiscordWebhook.Embed(
                                 title = "Client Details",
-                                description = "App Version: ${
-                                    errorContent.getString(ReportField.APP_VERSION_NAME)
-                                } (${errorContent.getString(ReportField.APP_VERSION_CODE)})\n".bold() + "Android Version: ${
-                                    errorContent.getString(
-                                        ReportField.ANDROID_VERSION
-                                    )
-                                }\n".bold() + "Device: ${errorContent.getString(ReportField.BRAND)} ${
-                                    errorContent.getString(
-                                        ReportField.PHONE_MODEL
-                                    )
-                                }\n".bold(),
+                                description = listOf(
+                                    "App Version: ${
+                                        errorContent.getString(ReportField.APP_VERSION_NAME)
+                                    } (${errorContent.getString(ReportField.APP_VERSION_CODE)})",
+                                    "Android Version: ${
+                                        errorContent.getString(
+                                            ReportField.ANDROID_VERSION
+                                        )
+                                    }",
+                                    "Device: ${errorContent.getString(ReportField.BRAND)} ${
+                                        errorContent.getString(
+                                            ReportField.PHONE_MODEL
+                                        )
+                                    }"
+                                ).joinToString(separator = "\n") { it.bold() },
                                 color = 0x23A8F2,
                                 thumbnail = EmbedThumbnail(
                                     url = "https://www.chouten.app/Icon.png"
