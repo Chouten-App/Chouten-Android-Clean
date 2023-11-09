@@ -2,7 +2,10 @@ package com.chouten.app
 
 import android.content.Context
 import android.webkit.MimeTypeMap
+import com.chouten.app.domain.proto.CrashReport
+import com.chouten.app.domain.proto.CrashReportUUID
 import com.chouten.app.domain.proto.ModulePreferences
+import com.chouten.app.domain.proto.crashReportStore
 import com.chouten.app.domain.proto.moduleDatastore
 import com.google.auto.service.AutoService
 import com.lagradost.nicehttp.Requests
@@ -132,6 +135,20 @@ class DiscordReporter(
     override fun send(context: Context, errorContent: CrashReportData) {
         thread {
             runBlocking {
+                context.crashReportStore.updateData { preferences ->
+                    preferences.copy(
+                        lastCrashReport = CrashReportUUID(
+                            uuid = errorContent.getString(ReportField.REPORT_ID)
+                                ?: "NO_UUID_FOUND-0000"
+                        )
+                    )
+                }
+            }
+        }
+        thread {
+            runBlocking {
+                // We don't want to send the report if the user has disabled it
+                if (context.crashReportStore.data.firstOrNull()?.enabled != true) return@runBlocking
                 val parsed = DiscordWebhookMultipart(
                     payloadJson = DiscordWebhook(
                         username = "Chouten Crash Reporter",
@@ -237,7 +254,23 @@ class DiscordReporter(
                                 })
                         }
                     }.build()
-                )
+                ).apply {
+                    if (!isSuccessful && code != 200) {
+                        context.crashReportStore.updateData { preferences ->
+                            preferences.copy(
+                                unsentCrashReport = CrashReport(
+                                    reportPath = context.cacheDir.resolve(
+                                        "crash-${errorContent.getString(ReportField.REPORT_ID)}.json"
+                                    ).apply {
+                                        bufferedWriter().use {
+                                            it.write(errorContent.toJSON())
+                                        }
+                                    }.absolutePath
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }

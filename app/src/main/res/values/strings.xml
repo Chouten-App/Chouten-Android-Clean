@@ -46,4 +46,12 @@
     <string name="failed_server_retrieval">Failed to get servers for %1$s</string>
     <string name="failed_source_retrieval">Failed to get sources for %1$s</string>
     <string name="media_index_bounds_error">Selected media index is out of bounds</string>
+    <string name="crash_report_dialog_desc">As you\'re using a potentially unstable version, it\'d be great if you could enable crash reporting. This data is used to help fix bugs and improve the app.\nYou can opt out of this at any time in the settings.</string>
+    <string name="disable">Disable</string>
+    <string name="enable">Enable</string>
+    <string name="crash_report_dialog_title">Enable Crash Reporting</string>
+    <string name="general">General</string>
+    <string name="crash_reports_preference_title">Send Crash Reports</string>
+    <string name="crash_reports_preference_description">Send crash reports to the developer to help improve the app.</string>
+    <string name="general_preference_description">Change General App Settings</string>
 </resources>

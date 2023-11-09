@@ -14,6 +14,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -24,10 +25,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
+import com.chouten.app.BuildConfig
 import com.chouten.app.R
 import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.domain.proto.crashReportStore
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.presentation.ui.components.common.AppState
 import com.chouten.app.presentation.ui.components.navigation.ChoutenNavigation
@@ -61,6 +64,8 @@ fun ChoutenApp(
 
     // Check if the app has a module directory set
     val filePreferences by context.filepathDatastore.data.collectAsState(initial = null)
+
+    val crashReportPreferences by context.crashReportStore.data.collectAsState(initial = null)
 
     // Initialise the SAF picker
     val safPicker = safPicker(appState)
@@ -172,6 +177,53 @@ fun ChoutenApp(
                             Text(text = UiText.StringRes(R.string.select_directory).string())
                         }
                     }, dismissButton = {})
+                } else if (crashReportPreferences?.hasBeenRequested == false
+                    // If the build version name is not a plain semantic version (e.g 1.0.0-<build>) instead of 1.0.0
+                    // we should ask the user to enable crash reporting
+                    && (BuildConfig.VERSION_NAME.split("-").size > 1 || BuildConfig.DEBUG)
+                ) {
+                    AlertDialog(onDismissRequest = {
+                        appState.viewModel.runAsync {
+                            context.crashReportStore.updateData { preferences ->
+                                preferences.copy(
+                                    hasBeenRequested = true
+                                )
+                            }
+                        }
+                    }, title = {
+                        Text(
+                            UiText.StringRes(R.string.crash_report_dialog_title).string(),
+                        )
+                    }, text = {
+                        Text(
+                            UiText.StringRes(R.string.crash_report_dialog_desc).string()
+                                .trimIndent()
+                        )
+                    }, confirmButton = {
+                        Button(onClick = {
+                            appState.viewModel.runAsync {
+                                context.crashReportStore.updateData { preferences ->
+                                    preferences.copy(
+                                        enabled = true, hasBeenRequested = true
+                                    )
+                                }
+                            }
+                        }) {
+                            Text(text = UiText.StringRes(R.string.enable).string())
+                        }
+                    }, dismissButton = {
+                        TextButton(onClick = {
+                            appState.viewModel.runAsync {
+                                context.crashReportStore.updateData { preferences ->
+                                    preferences.copy(
+                                        hasBeenRequested = true
+                                    )
+                                }
+                            }
+                        }) {
+                            Text(text = UiText.StringRes(R.string.disable).string())
+                        }
+                    })
                 } else DestinationsNavHost(navController = navigator,
                     navGraph = NavGraphs.root,
                     dependenciesContainerBuilder = {
