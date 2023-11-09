@@ -14,7 +14,9 @@ import androidx.compose.ui.res.stringResource
 import com.chouten.app.R
 import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.MoreNavGraph
+import com.chouten.app.common.UiText
 import com.chouten.app.presentation.ui.screens.destinations.AppearanceViewDestination
+import com.chouten.app.presentation.ui.screens.destinations.GeneralViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.LogViewDestination
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -26,12 +28,30 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 @Destination(
     start = true
 )
-fun MoreView(navigator: DestinationsNavigator) {
+fun MoreView(
+    navigator: DestinationsNavigator
+) {
     Column(
         modifier = Modifier.padding(LocalAppPadding.current)
     ) {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.appearance)) },
+        ListItem(headlineContent = { Text(UiText.StringRes(R.string.general).string()) },
+            supportingContent = {
+                Text(
+                    UiText.StringRes(R.string.general_preference_description)
+                        .string()
+                )
+            },
+            trailingContent = {
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = UiText.StringRes(R.string.general_preference_description)
+                        .string()
+                )
+            },
+            modifier = Modifier.clickable {
+                navigator.navigate(GeneralViewDestination)
+            })
+        ListItem(headlineContent = { Text(stringResource(R.string.appearance)) },
             supportingContent = { Text(stringResource(R.string.appearance_page_description)) },
             trailingContent = {
                 Icon(
@@ -41,10 +61,8 @@ fun MoreView(navigator: DestinationsNavigator) {
             },
             modifier = Modifier.clickable {
                 navigator.navigate(AppearanceViewDestination)
-            }
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.view_logs)) },
+            })
+        ListItem(headlineContent = { Text(stringResource(R.string.view_logs)) },
             supportingContent = { Text(stringResource(R.string.view_app_logs)) },
             trailingContent = {
                 Icon(
@@ -54,7 +72,6 @@ fun MoreView(navigator: DestinationsNavigator) {
             },
             modifier = Modifier.clickable {
                 navigator.navigate(LogViewDestination)
-            }
-        )
+            })
     }
 }

@@ -5,22 +5,30 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chouten.app.DiscordReportSenderFactory
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.domain.proto.crashReportStore
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.proto.moduleDatastore
+import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import org.acra.config.CoreConfiguration
+import org.acra.data.CrashReportData
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class ChoutenAppViewModel @Inject constructor(
     private val application: Application,
-    private val moduleUseCases: ModuleUseCases
+    private val moduleUseCases: ModuleUseCases,
+    private val logUseCases: LogUseCases
 ) : ViewModel() {
 
     private val _modules = MutableStateFlow<List<ModuleModel>>(emptyList())
@@ -36,6 +44,32 @@ class ChoutenAppViewModel @Inject constructor(
      * @see [removeModule]
      */
     val modules: StateFlow<List<ModuleModel>> = _modules
+
+    init {
+        viewModelScope.launch {
+            application.crashReportStore.data.firstOrNull()?.let {
+                // If either of the above are not null, we should
+                // de-select the current module
+                if (!listOf(it.lastCrashReport, it.unsentCrashReport).contains(null)) {
+                    application.moduleDatastore.updateData { preferences ->
+                        preferences.copy(selectedModuleId = "")
+                    }
+                }
+
+                if (it.unsentCrashReport != null) {
+                    DiscordReportSenderFactory().create(application, CoreConfiguration()).send(
+                        application,
+                        CrashReportData(
+                            json = File(it.unsentCrashReport.reportPath).bufferedReader().readText()
+                        )
+                    )
+                    application.crashReportStore.updateData { preferences ->
+                        preferences.copy(lastCrashReport = null, unsentCrashReport = null)
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Emits the list of modules currently installed in the app.
