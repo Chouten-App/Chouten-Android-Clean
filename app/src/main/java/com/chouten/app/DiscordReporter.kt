@@ -221,9 +221,6 @@ class DiscordReporter(
                                     },
                                 ),
                                 color = 0xB263A5,
-                            ), DiscordWebhook.Embed(
-                                title = "Stack Trace",
-                                url = "attachment://crash.log",
                             )
                         ),
                     ), files = listOfNotNull(errorContent.getString(ReportField.STACK_TRACE)?.let {
