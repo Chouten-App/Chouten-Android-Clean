@@ -111,11 +111,6 @@ data class DiscordWebhook @OptIn(ExperimentalSerializationApi::class) constructo
             @EncodeDefault @SerialName("proxy_icon_url") val proxyIconUrl: String? = null,
         )
 
-        /*
-        name	string	name of the field
-value	string	value of the field
-inline?	boolean	whether or not this field should display inline
-         */
         @Serializable
         data class EmbedField @OptIn(ExperimentalSerializationApi::class) constructor(
             val name: String,
