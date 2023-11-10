@@ -50,9 +50,12 @@ class ChoutenAppViewModel @Inject constructor(
             application.crashReportStore.data.firstOrNull()?.let {
                 // If either of the above are not null, we should
                 // de-select the current module
-                if (!listOf(it.lastCrashReport, it.unsentCrashReport).contains(null)) {
+                if (it.lastCrashReport != null || it.unsentCrashReport != null) {
                     application.moduleDatastore.updateData { preferences ->
                         preferences.copy(selectedModuleId = "")
+                    }
+                    application.crashReportStore.updateData { preferences ->
+                        preferences.copy(lastCrashReport = null)
                     }
                 }
 
@@ -64,6 +67,8 @@ class ChoutenAppViewModel @Inject constructor(
                         )
                     )
                     application.crashReportStore.updateData { preferences ->
+                        // The crash report has been sent so we don't need to report it
+                        // as the last crash report anymore.
                         preferences.copy(lastCrashReport = null, unsentCrashReport = null)
                     }
                 }
