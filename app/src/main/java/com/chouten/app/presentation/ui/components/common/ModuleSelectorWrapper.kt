@@ -25,13 +25,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +51,6 @@ import com.chouten.app.domain.proto.appearanceDatastore
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.acra.ACRA
 
@@ -81,31 +78,22 @@ fun ModuleSelectorWrapper(
         )
     )
 
+    val modules by viewModel.modules.collectAsState()
     val context = LocalContext.current
-    var selectedModule by rememberSaveable {
-        mutableStateOf(
-            UiText.StringRes(R.string.no_module_selected).string(context)
-        )
-    }
-
     val modulePreferences by context.moduleDatastore.data.collectAsState(initial = ModulePreferences.DEFAULT)
 
-    LaunchedEffect(modulePreferences) {
-        viewModel.modules.collectLatest {
-            it.firstOrNull { module ->
+    val selectedModule by rememberSaveable(modules, modulePreferences) {
+        mutableStateOf(
+            modules.firstOrNull { module ->
                 module.id == modulePreferences.selectedModuleId
-            }?.name?.let { moduleName ->
-                selectedModule = moduleName
+            }?.name?.also {
                 ACRA.errorReporter.putCustomData(
                     "Selected Module",
-                    moduleName
+                    it
                 )
-            } ?: run {
-                selectedModule = UiText.StringRes(R.string.no_module_selected).string(context)
-            }
-        }
+            } ?: UiText.StringRes(R.string.no_module_selected).string(context)
+        )
     }
-
 
     BottomSheetScaffold(scaffoldState = scaffoldState,
         sheetPeekHeight = 0.dp,
