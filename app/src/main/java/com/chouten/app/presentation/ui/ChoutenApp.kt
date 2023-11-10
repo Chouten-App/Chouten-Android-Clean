@@ -47,6 +47,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.acra.ACRA
+import java.net.URLDecoder
 
 /**
  * The main entry point for the app's UI.
@@ -224,7 +226,32 @@ fun ChoutenApp(
                             Text(text = UiText.StringRes(R.string.disable).string())
                         }
                     })
-                } else DestinationsNavHost(navController = navigator,
+                } else DestinationsNavHost(navController = navigator.also {
+                    it.addOnDestinationChangedListener { _, destination, arguments ->
+                        ACRA.errorReporter.putCustomData(
+                            "Active Destination",
+                            destination.route ?: "Unknown"
+                        )
+                        arguments?.keySet()?.mapNotNull { key ->
+                            arguments.getString(key)?.let { arg ->
+                                val decoded = URLDecoder.decode(arg, "UTF-8")
+                                if (decoded.isBlank()) return@mapNotNull null
+                                "$key: $decoded"
+                            }
+                        }?.let { kvPair ->
+                            if (kvPair.isEmpty()) {
+                                ACRA.errorReporter.putCustomData(
+                                    "Destination Arguments",
+                                    "None (or not String values)"
+                                )
+                            } else
+                                ACRA.errorReporter.putCustomData(
+                                    "Destination Arguments",
+                                    kvPair.joinToString(separator = "\n")
+                                )
+                        }
+                    }
+                },
                     navGraph = NavGraphs.root,
                     dependenciesContainerBuilder = {
                         dependency(appState.viewModel)

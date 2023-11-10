@@ -5,9 +5,7 @@ import android.util.Log
 import android.webkit.MimeTypeMap
 import com.chouten.app.domain.proto.CrashReport
 import com.chouten.app.domain.proto.CrashReportUUID
-import com.chouten.app.domain.proto.ModulePreferences
 import com.chouten.app.domain.proto.crashReportStore
-import com.chouten.app.domain.proto.moduleDatastore
 import com.google.auto.service.AutoService
 import com.lagradost.nicehttp.Requests
 import kotlinx.coroutines.flow.firstOrNull
@@ -18,6 +16,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -214,16 +214,13 @@ class DiscordReporter(
                                             }.toString()
                                         }, inline = true
                                     ),
-                                    context.moduleDatastore.data.firstOrNull()?.let {
-                                        DiscordWebhook.Embed.EmbedField(
-                                            name = "Selected Module ID",
-                                            value = if (it.selectedModuleId == ModulePreferences.DEFAULT.selectedModuleId) {
-                                                "None"
-                                            } else {
-                                                it.selectedModuleId
-                                            }
-                                        )
-                                    },
+                                    *(errorContent.getString(ReportField.CUSTOM_DATA)?.let {
+                                        Json.parseToJsonElement(it).jsonObject.entries.map { (key, value) ->
+                                            DiscordWebhook.Embed.EmbedField(
+                                                name = key, value = value.jsonPrimitive.content
+                                            )
+                                        }
+                                    }?.toTypedArray() ?: arrayOf()),
                                 ),
                                 color = 0xB263A5,
                             )

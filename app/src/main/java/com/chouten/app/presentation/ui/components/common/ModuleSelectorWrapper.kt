@@ -55,6 +55,7 @@ import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.acra.ACRA
 
 /**
  * Wraps the content within a [BottomSheetScaffold] which displays a [ModuleSelector] in the sheet.
@@ -93,7 +94,13 @@ fun ModuleSelectorWrapper(
         viewModel.modules.collectLatest {
             it.firstOrNull { module ->
                 module.id == modulePreferences.selectedModuleId
-            }?.name?.let { moduleName -> selectedModule = moduleName } ?: run {
+            }?.name?.let { moduleName ->
+                selectedModule = moduleName
+                ACRA.errorReporter.putCustomData(
+                    "Selected Module",
+                    moduleName
+                )
+            } ?: run {
                 selectedModule = UiText.StringRes(R.string.no_module_selected).string(context)
             }
         }
