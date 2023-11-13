@@ -30,6 +30,10 @@ jobs:
       #     fileDir: '/home/runner/work/Chouten-Android/Chouten-Android/app/keystore/'
       #     encodedString: ${{ secrets.KEYSTORE }}
 
+      - name: Add Properties to local.properties
+        run: |
+          echo ${{ secrets.DISCORD_BUG_WEBHOOK_EXTRA }} >> local.properties
+
       # Build and sign APK ("-x test" argument is used to skip tests)
       - name: Build APK
         run: ./gradlew :app:assembleDebug -x test
