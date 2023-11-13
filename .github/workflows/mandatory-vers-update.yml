@@ -1,0 +1,27 @@
+name: Mandatory Version Update
+
+on:
+  pull_request:
+    types: [ "ready_for_review" ]
+  pull_request_review:
+    types: [ edited ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve Version Code of PR branch
+        run: cat app/build.gradle.kts | sed -nE "s/versionCode = (\w+)$/\1/p" | tr -d ' ' > /home/runner/version_pr
+
+      - name: Retrieve Version Code of Development branch
+        run: cat app/build.gradle.kts | sed -nE "s/versionCode = (\w+)$/\1/p" | tr -d ' ' > /home/runner/version_dev
+      - uses: actions/checkout@v3
+        with:
+          ref: "dev"
+
+      - name: Compare Versions
+        run: |
+          pr=$(cat /home/runner/version_pr)
+          dev=$(cat /home/runner/version_dev)
+          result=$(pr > dev)
+          exit $result
