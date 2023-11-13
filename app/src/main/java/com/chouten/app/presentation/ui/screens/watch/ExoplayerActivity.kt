@@ -253,7 +253,9 @@ class ExoplayerActivity : ComponentActivity() {
         }
 
         mediaItem = MediaItem.Builder().apply {
-            setUri(sources.sources.firstOrNull()?.file ?: "")
+            setUri(
+                sources.sources.maxByOrNull { it.quality.filter { q -> q.isDigit() } }?.file ?: ""
+            )
             setMimeType(mimeType)
             sources.subtitles?.let { subs ->
                 // Module dev might not have checked this properly - can't give benefit of the doubt

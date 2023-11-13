@@ -53,6 +53,7 @@ data class WatchResult(
     data class Source(
         val file: String,
         val type: String,
+        val quality: String
     ) : Parcelable
 
     @Serializable
