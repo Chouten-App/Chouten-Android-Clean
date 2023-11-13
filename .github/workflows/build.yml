@@ -50,9 +50,9 @@ jobs:
         uses: actions/upload-artifact@v3.0.0
         with:
           name: Chouten
-          path: "app/build/outputs/apk/debug/Chouten.apk"
+          path: "app/build/outputs/apk/debug/app-debug.apk"
 
       - name: Upload the APK to Discord
         shell: bash
         run: |
-          curl -F "debug=@app/build/outputs/apk/debug/Chouten.apk" ${{ secrets.DISCORD_WEBHOOK_URL }}
+          curl -F "debug=@app/build/outputs/apk/debug/app-debug.apk" ${{ secrets.DISCORD_WEBHOOK_URL }}
