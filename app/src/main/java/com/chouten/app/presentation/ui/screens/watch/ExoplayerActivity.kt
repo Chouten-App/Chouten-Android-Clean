@@ -231,6 +231,14 @@ class ExoplayerActivity : ComponentActivity() {
             sources.headers?.forEach {
                 httpDataSource.setRequestProperty(it.key, it.value)
             }
+            client.defaultHeaders.keys.forEach { key ->
+                if (key.isBlank()) return@forEach
+                if (key !in (sources.headers ?: mapOf())) {
+                    client.defaultHeaders[key]?.let {
+                        httpDataSource.setRequestProperty(key, it)
+                    }
+                }
+            }
             httpDataSource
         }
 
