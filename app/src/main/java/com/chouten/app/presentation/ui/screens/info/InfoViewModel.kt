@@ -14,9 +14,11 @@ import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
@@ -97,6 +99,17 @@ class InfoViewModel @Inject constructor(
         savedStateHandle.getStateFlow("epListResults", Resource.Uninitialized())
 
     /**
+     * The list of media items. Made from concatenating the [infoResults] and [episodeList] data
+     */
+    fun getMediaList(): List<InfoResult.MediaListItem> {
+        return runBlocking {
+            infoResults.firstOrNull()?.data?.mediaList?.plus(
+                episodeList.firstOrNull()?.data ?: listOf()
+            ) ?: listOf()
+        }
+    }
+
+    /**
      * Whether or not the episode list has been paginated to the end
      * NOTE: This does NOT mean that the webview itself has finished returning
      * all of it's episodes.
@@ -110,8 +123,8 @@ class InfoViewModel @Inject constructor(
     var paginatedAll = false
         private set
 
-    var selectedSeason: InfoResult.Season? = null
-        private set
+    private var _selectedSeason: MutableStateFlow<InfoResult.Season?> = MutableStateFlow(null)
+    val selectedSeason: StateFlow<InfoResult.Season?> = _selectedSeason
 
     var seasonCount = 0
         private set
@@ -149,10 +162,19 @@ class InfoViewModel @Inject constructor(
                     return@initialize
                 }
                 viewModelScope.launch {
-                    if (selectedSeason == null) selectedSeason =
+                    if (_selectedSeason.firstOrNull() == null) _selectedSeason.emit(
                         res.result.result.seasons?.firstOrNull()
+                    )
                     seasonCount = res.result.result.seasons?.size ?: 1
-                    savedStateHandle["infoResults"] = Resource.Success(res.result.result)
+                    if (infoResults.firstOrNull() is Resource.Success) {
+                        savedStateHandle["infoResults"] = Resource.Success(
+                            infoResults.firstOrNull()?.data?.copy(
+                                epListURLs = res.result.result.epListURLs
+                            )
+                        )
+                    } else {
+                        savedStateHandle["infoResults"] = Resource.Success(res.result.result)
+                    }
                 }
             }
 
@@ -198,6 +220,28 @@ class InfoViewModel @Inject constructor(
                     savedStateHandle.get<Resource<List<InfoResult.MediaListItem>>>("epListResults")?.data?.toMutableSet()
                         ?: mutableSetOf()
                 episodes.addAll(res.result.result)
+                if (episodes.size > 1) {
+                    val collectedInfoResults = infoResults.firstOrNull()?.data
+                    collectedInfoResults?.let {
+                        savedStateHandle["infoResults"] = Resource.Success(
+                            it.copy(
+                                seasons = (it.seasons?.plus(episodes.mapIndexed { index, season ->
+                                    val resultSeason = InfoResult.Season(
+                                        name = season.title,
+                                        url = season.list.firstOrNull()?.url ?: ""
+                                    )
+                                    if (it.seasons.size.plus(
+                                            it.mediaList?.size ?: 0
+                                        ) == 0 && index == 0
+                                    ) {
+                                        _selectedSeason.emit(resultSeason)
+                                    }
+                                    resultSeason
+                                })?.toSet()?.toList())
+                            )
+                        )
+                    }
+                }
                 savedStateHandle["epListResults"] = Resource.Success(episodes.toList())
                 if (_paginatedAll) {
                     paginatedAll = true
@@ -218,9 +262,20 @@ class InfoViewModel @Inject constructor(
     }
 
     fun changeSeason(season: InfoResult.Season) {
-        selectedSeason = infoResults.value.data?.seasons?.find { it == season }
-        savedStateHandle["infoResults"] = Resource.Uninitialized<InfoResult>()
-        savedStateHandle["epListResults"] = Resource.Uninitialized<List<InfoResult.MediaListItem>>()
+        viewModelScope.launch {
+            if (season == selectedSeason.firstOrNull()) return@launch
+            _selectedSeason.emit(infoResults.value.data?.seasons?.find { it == season })
+            // If the media doesn't appear to have been loaded, request it using the season url
+            if (getMediaList().find { it.title == season.name } == null) {
+                savedStateHandle["infoResults"] = Resource.Success(
+                    infoResults.firstOrNull()?.data?.copy(
+                        epListURLs = listOf(season.url)
+                    )
+                )
+                savedStateHandle["epListResults"] =
+                    Resource.Uninitialized<List<InfoResult.MediaListItem>>()
+            }
+        }
     }
 
     fun log(title: String = "Webview Handler", content: String) {
@@ -234,9 +289,15 @@ class InfoViewModel @Inject constructor(
     }
 
     suspend fun saveMediaBundle() {
-        val media = infoResults.firstOrNull()?.data?.mediaList?.plus(
-            episodeList.firstOrNull()?.data ?: emptyList()
-        ) ?: emptyList()
+        val season = selectedSeason.firstOrNull()
+        val media = getMediaList().sortedBy {
+            // We want the selected season to be the first index
+            if (it.title == season?.name) {
+                0
+            } else {
+                1
+            }
+        }
         withContext(Dispatchers.IO) {
             application.applicationContext.cacheDir.resolve("${FILE_PREFIX}_media.json")
                 .bufferedWriter().use {

@@ -104,17 +104,30 @@ fun InfoView(
     val infoResults by infoViewModel.infoResults.collectAsState()
     val episodeList by infoViewModel.episodeList.collectAsState()
 
-    LaunchedEffect(infoResults) {
+    val selectedSeason by infoViewModel.selectedSeason.collectAsState()
+    var lastUrl by rememberSaveable { mutableStateOf(url) }
+
+    LaunchedEffect(infoResults, selectedSeason) {
         when (infoResults) {
             is Resource.Success -> {
-                if (infoResults.data?.epListURLs?.isNotEmpty() == true) {
-                    val urls = infoResults.data?.epListURLs ?: listOf()
-                    infoViewModel.getEpisodes(urls, 0)
-                }
+                val urls = infoResults.data?.epListURLs ?: listOf()
+                selectedSeason?.let {
+                    if ((lastUrl != it.url) && (infoViewModel.getMediaList().find { media ->
+                            media.title == it.name
+                        } == null)
+                    ) {
+                        infoViewModel.getInfo(title, it.url)
+                        lastUrl = it.url
+                    } else {
+                        // Make sure that we don't reload the episodes if we already have them
+                        if (episodeList is Resource.Uninitialized)
+                            infoViewModel.getEpisodes(urls, 0)
+                    }
+                } ?: infoViewModel.getEpisodes(urls, 0)
             }
 
             is Resource.Uninitialized -> {
-                infoViewModel.getInfo(title, infoViewModel.selectedSeason?.url ?: url)
+                infoViewModel.getInfo(title, selectedSeason?.url ?: url)
             }
 
             is Resource.Error -> {
@@ -332,7 +345,7 @@ fun InfoView(
                                 isSeasonDropdown = it
                             }, modifier = Modifier.fillMaxWidth()) {
                                 TextField(
-                                    value = infoViewModel.selectedSeason?.name ?: "Season 1",
+                                    value = selectedSeason?.name ?: "Season 1",
                                     onValueChange = {},
                                     readOnly = true,
                                     trailingIcon = {
@@ -390,7 +403,9 @@ fun InfoView(
                                     verticalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
                                     itemsIndexed(
-                                        items = episodeList.data?.getOrNull(0)?.list ?: listOf()
+                                        items = infoViewModel.getMediaList()
+                                            .find { it.title == selectedSeason?.name }?.list
+                                            ?: episodeList.data?.getOrNull(0)?.list ?: listOf()
                                     ) { index, item ->
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
