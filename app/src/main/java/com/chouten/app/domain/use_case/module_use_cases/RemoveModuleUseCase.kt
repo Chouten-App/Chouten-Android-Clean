@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.repository.ModuleRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -43,43 +45,44 @@ class RemoveModuleUseCase @Inject constructor(
      * @throws IOException if the folder cannot be deleted (e.g permissions)
      * @see [RemoveModuleUseCase.invoke]
      */
-    suspend operator fun invoke(module: ModuleModel, onRemove: (suspend () -> Unit)? = null) {
-        moduleRepository.getModuleDirs().forEach { moduleUri ->
-            // We need to parse the module metadata to get the module id
-            // and compare it to the module id of the module we want to remove
-            val contentResolver = context.contentResolver
-            val metadataUri: Uri = contentResolver.query(
-                moduleUri, arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                ), null, null, null
-            )?.use { cursor ->
-                val displayNameIndex =
-                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                val documentIdIndex =
-                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                while (cursor.moveToNext()) {
-                    if (cursor.getString(displayNameIndex) == "metadata.json") {
-                        return@use DocumentsContract.buildChildDocumentsUriUsingTree(
-                            moduleUri, cursor.getString(documentIdIndex)
-                        )
+    suspend operator fun invoke(module: ModuleModel, onRemove: (suspend () -> Unit)? = null) =
+        withContext(Dispatchers.IO) {
+            moduleRepository.getModuleDirs().forEach { moduleUri ->
+                // We need to parse the module metadata to get the module id
+                // and compare it to the module id of the module we want to remove
+                val contentResolver = context.contentResolver
+                val metadataUri: Uri = contentResolver.query(
+                    moduleUri, arrayOf(
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                    ), null, null, null
+                )?.use { cursor ->
+                    val displayNameIndex =
+                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    val documentIdIndex =
+                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                    while (cursor.moveToNext()) {
+                        if (cursor.getString(displayNameIndex) == "metadata.json") {
+                            return@use DocumentsContract.buildChildDocumentsUriUsingTree(
+                                moduleUri, cursor.getString(documentIdIndex)
+                            )
+                        }
                     }
-                }
-                null
-            } ?: throw IllegalArgumentException("Invalid URI $moduleUri")
+                    null
+                } ?: throw IllegalArgumentException("Invalid URI $moduleUri")
 
-            val inputStream = contentResolver.openInputStream(metadataUri)
-                ?: throw IllegalArgumentException("Invalid URI")
-            val metadata = jsonParser(inputStream.bufferedReader().use { it.readText() })
-            inputStream.close()
+                val inputStream = contentResolver.openInputStream(metadataUri)
+                    ?: throw IllegalArgumentException("Invalid URI")
+                val metadata = jsonParser(inputStream.bufferedReader().use { it.readText() })
+                inputStream.close()
 
-            if (metadata.id == module.id) {
-                log("Removing module ${module.name}")
-                moduleRepository.removeModule(moduleUri).also {
-                    onRemove?.let { it() } ?: log("Removed module ${module.name}")
+                if (metadata.id == module.id) {
+                    log("Removing module ${module.name}")
+                    moduleRepository.removeModule(moduleUri).also {
+                        onRemove?.let { it() } ?: log("Removed module ${module.name}")
+                    }
+                    return@forEach
                 }
-                return@forEach
             }
         }
-    }
 }

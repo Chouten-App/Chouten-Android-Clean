@@ -12,7 +12,9 @@ import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.repository.ModuleRepository
 import com.lagradost.nicehttp.Requests
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import javax.inject.Inject
 
@@ -31,7 +33,7 @@ class AddModuleUseCase @Inject constructor(
      * @throws IOException if the module cannot be downloaded or added (e.g duplicate/unsupported version)
      * @throws IllegalArgumentException if the URI is invalid. Not a valid module (e.g not a zip or no metadata)
      */
-    suspend operator fun invoke(uri: Uri) {
+    suspend operator fun invoke(uri: Uri) = withContext(Dispatchers.IO) {
         val contentResolver = mContext.contentResolver
         val preferences = mContext.filepathDatastore.data.first()
         val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)

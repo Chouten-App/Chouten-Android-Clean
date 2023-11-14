@@ -32,16 +32,17 @@ class GetAllModulesUseCase @Inject constructor(
      * them against the supported module version.
      * If there is a parsing error or the module is not supported, the module is removed from the list.
      */
-    suspend operator fun invoke(): List<ModuleModel> {
+    suspend operator fun invoke(): List<ModuleModel> = withContext(Dispatchers.IO) {
         val potentialDirs = moduleRepository.getModuleDirs()
 
         // Modules which cannot be parsed or are not supported
         // are removed from the list by returning null to the mapNotNull function
-        return potentialDirs.mapNotNull { moduleDirUri ->
+        potentialDirs.mapNotNull { moduleDirUri ->
             try {
                 // Get the display name of the module
                 val displayName =
-                    DocumentFile.fromTreeUri(mContext, moduleDirUri)?.name ?: return@mapNotNull null
+                    DocumentFile.fromTreeUri(mContext, moduleDirUri)?.name
+                        ?: return@mapNotNull null
 
                 // Folders ending within .tmp have not completed the
                 // add module process and should be ignored
@@ -118,7 +119,7 @@ class GetAllModulesUseCase @Inject constructor(
      * @throws IllegalArgumentException if the metadata.json file does not exist / cannot be read
      * @throws IllegalArgumentException if the metadata.json file cannot be parsed
      */
-    private fun getMetadata(moduleDirUri: Uri): ModuleModel {
+    private suspend fun getMetadata(moduleDirUri: Uri): ModuleModel = withContext(Dispatchers.IO) {
         /**
          * metadataUri is a DocumentUri (a uri which points to a single document)
          * It is used to get the metadata.json file from the module directory
@@ -168,7 +169,7 @@ class GetAllModulesUseCase @Inject constructor(
 
         inputStream.close()
 
-        return jsonParser.decodeFromString<ModuleModel>(buffer)
+        return@withContext jsonParser.decodeFromString<ModuleModel>(buffer)
     }
 
     /**
@@ -178,7 +179,7 @@ class GetAllModulesUseCase @Inject constructor(
      * @return The icon of the module as a byte array
      * @throws IllegalArgumentException if the icon file cannot be read
      */
-    private fun getIcon(moduleDirUri: Uri): ByteArray? {
+    private suspend fun getIcon(moduleDirUri: Uri): ByteArray? = withContext(Dispatchers.IO) {
         val icon = ByteArrayOutputStream()
         mContext.contentResolver.query(
             moduleDirUri, arrayOf(
@@ -212,7 +213,7 @@ class GetAllModulesUseCase @Inject constructor(
                 }
             }
         }
-        return icon.toByteArray()
+        return@withContext icon.toByteArray()
     }
 
     /**
@@ -224,7 +225,7 @@ class GetAllModulesUseCase @Inject constructor(
      */
     private suspend fun getModuleCode(
         moduleDirUri: Uri, subfolder: ModuleSubdirectory
-    ): List<ModuleModel.ModuleCode.ModuleCodeblock> {
+    ): List<ModuleModel.ModuleCode.ModuleCodeblock> = withContext(Dispatchers.IO) {
         val codeblocks = mutableListOf<ModuleModel.ModuleCode.ModuleCodeblock>()
 
         /**
@@ -315,6 +316,6 @@ class GetAllModulesUseCase @Inject constructor(
         }
 
         Log.d("ModuleManager", "Finished reading all files")
-        return codeblocks
+        return@withContext codeblocks
     }
 }

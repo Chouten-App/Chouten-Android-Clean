@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.ModuleFolderNotFoundException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import javax.inject.Inject
 
@@ -20,7 +22,7 @@ import javax.inject.Inject
 class GetModuleDirUseCase @Inject constructor(
     private val context: Context
 ) {
-    operator fun invoke(baseUri: Uri): Uri {
+    suspend operator fun invoke(baseUri: Uri): Uri = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
 
         // Get the URI which we can query with
@@ -32,7 +34,7 @@ class GetModuleDirUseCase @Inject constructor(
             )
         } ?: throw IllegalArgumentException("Invalid URI")
 
-        return contentResolver.query(
+        return@withContext contentResolver.query(
             docUri,
             arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,

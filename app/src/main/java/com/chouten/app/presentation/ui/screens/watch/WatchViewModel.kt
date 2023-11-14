@@ -15,9 +15,11 @@ import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import com.chouten.app.presentation.ui.screens.info.InfoResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -112,43 +114,49 @@ class WatchViewModel @Inject constructor(
     // We store the media here since it MAY be too large to store in the savedStateHandle
     private var media: List<InfoResult.MediaListItem> = listOf()
 
+    private lateinit var code: String
+
     init {
         // Purge all watch data which is older than 30 minutes
         viewModelScope.launch {
             // TODO: Migrate to some sort of runLogging lambda
-            try {
-                application.cacheDir.listFiles()?.forEach { file ->
-                    if (file.name.endsWith("_lock")) {
-                        if (file.lastModified() >= System.currentTimeMillis() - 30 * 60 * 1000) return@forEach
-                        // Destroy the lock file and all associated data
-                        val uuid = file.name.removeSuffix("_lock")
+            withContext(Dispatchers.IO) {
+                try {
+                    application.cacheDir.listFiles()?.forEach { file ->
+                        if (file.name.endsWith("_lock")) {
+                            if (file.lastModified() >= System.currentTimeMillis() - 30 * 60 * 1000) return@forEach
+                            // Destroy the lock file and all associated data
+                            val uuid = file.name.removeSuffix("_lock")
 
-                        // Don't destroy the in-use files
-                        if (uuid == FILE_PREFIX) return@forEach
+                            // Don't destroy the in-use files
+                            if (uuid == FILE_PREFIX) return@forEach
 
-                        application.cacheDir.resolve("${uuid}_server.json").delete()
-                        application.cacheDir.resolve("${uuid}_sources.json").delete()
-                        application.cacheDir.resolve("${uuid}_media.json").delete()
-                        file.delete()
+                            application.cacheDir.resolve("${uuid}_server.json").delete()
+                            application.cacheDir.resolve("${uuid}_sources.json").delete()
+                            application.cacheDir.resolve("${uuid}_media.json").delete()
+                            file.delete()
+                        }
                     }
-                }
-            } catch (e: Exception) {
-                logUseCases.insertLog(
-                    LogEntry(
-                        entryHeader = "Failure Clearing Caches",
-                        entryContent =
-                        "Failed to purge watch data: ${e.message}"
+                } catch (e: Exception) {
+                    logUseCases.insertLog(
+                        LogEntry(
+                            entryHeader = "Failure Clearing Caches",
+                            entryContent =
+                            "Failed to purge watch data: ${e.message}"
+                        )
                     )
-                )
+                }
             }
         }
 
         // Get the Media Data
         viewModelScope.launch {
             try {
-                application.cacheDir.resolve("${FILE_PREFIX}_media.json").useLines { lines ->
-                    val text = lines.joinToString("\n")
-                    media = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                withContext(Dispatchers.IO) {
+                    application.cacheDir.resolve("${FILE_PREFIX}_media.json").useLines { lines ->
+                        val text = lines.joinToString("\n")
+                        media = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                    }
                 }
             } catch (e: Exception) {
                 logUseCases.insertLog(
@@ -181,19 +189,21 @@ class WatchViewModel @Inject constructor(
 
                     val errors = mutableListOf<String>()
                     // Save the servers to a file
-                    application.cacheDir.resolve("${FILE_PREFIX}_server.json").bufferedWriter()
-                        .use {
-                            try {
-                                it.write(json.encodeToString(res.result.result))
-                            } catch (e: IOException) {
-                                errors.add(e.message ?: "Unknown error")
+                    withContext(Dispatchers.IO) {
+                        application.cacheDir.resolve("${FILE_PREFIX}_server.json").bufferedWriter()
+                            .use {
+                                try {
+                                    it.write(json.encodeToString(res.result.result))
+                                } catch (e: IOException) {
+                                    errors.add(e.message ?: "Unknown error")
+                                }
                             }
-                        }
 
-                    savedStateHandle[STATUS] = statusValue?.copy(
-                        isServerSet = true,
-                        error = statusValue.error + errors
-                    )
+                        savedStateHandle[STATUS] = statusValue?.copy(
+                            isServerSet = true,
+                            error = statusValue.error + errors
+                        )
+                    }
                 }
             }
 
@@ -216,38 +226,56 @@ class WatchViewModel @Inject constructor(
 
                     val errors = mutableListOf<String>()
                     // Save the sources to a file
-                    application.cacheDir.resolve("${FILE_PREFIX}_sources.json").bufferedWriter()
-                        .use {
-                            try {
-                                it.write(json.encodeToString(res.result.result))
-                            } catch (e: IOException) {
-                                errors.add(e.message ?: "Unknown error")
+                    withContext(Dispatchers.IO) {
+                        application.cacheDir.resolve("${FILE_PREFIX}_sources.json").bufferedWriter()
+                            .use {
+                                try {
+                                    it.write(json.encodeToString(res.result.result))
+                                } catch (e: IOException) {
+                                    errors.add(e.message ?: "Unknown error")
+                                }
                             }
-                        }
 
-                    savedStateHandle[STATUS] = statusValue?.copy(
-                        isSourceSet = true,
-                        error = statusValue.error + errors
-                    )
+                        savedStateHandle[STATUS] = statusValue?.copy(
+                            isSourceSet = true,
+                            error = statusValue.error + errors
+                        )
+                    }
                 }
             }
         }
     }
 
     private suspend fun getCode(): String {
-        return moduleUseCases.getModuleUris().find {
-            it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-        }?.code?.mediaConsume?.getOrNull(0)?.code ?: ""
+        return if (!::code.isInitialized) {
+            withContext(Dispatchers.IO) {
+                code = moduleUseCases.getModuleUris().find {
+                    it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
+                }?.code?.mediaConsume?.getOrNull(0)?.code ?: run {
+                    logUseCases.insertLog(
+                        LogEntry(
+                            entryHeader = "Failure Loading Media",
+                            entryContent =
+                            "Failed to load media code"
+                        )
+                    )
+                    return@withContext ""
+                }
+                return@withContext code
+            }
+        } else code
     }
 
     suspend fun getServers(bundle: WatchBundle, bundleId: Int) {
-        url = media.getOrNull(0)?.list?.getOrElse(bundleId) {
-            if (media.isEmpty()) {
-                null
-            } else throw IllegalArgumentException(
-                UiText.StringRes(R.string.media_index_bounds_error).string(application)
-            )
-        }?.url ?: bundle.url
+        url = withContext(Dispatchers.IO) {
+            media.getOrNull(0)?.list?.getOrElse(bundleId) {
+                if (media.isEmpty()) {
+                    null
+                } else throw IllegalArgumentException(
+                    UiText.StringRes(R.string.media_index_bounds_error).string(application)
+                )
+            }?.url ?: bundle.url
+        }
 
         serverHandler.load(
             getCode(), WebviewHandler.Companion.WebviewPayload(

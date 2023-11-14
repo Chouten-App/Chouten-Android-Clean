@@ -156,8 +156,10 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
      */
     override suspend fun getCommonCode(context: Context): String {
         val resId = R.raw.commoncode_v2
-        context.resources.openRawResource(resId).bufferedReader().use {
-            return it.readText()
+        return withContext(Dispatchers.IO) {
+            context.resources.openRawResource(resId).bufferedReader().use {
+                return@use it.readText()
+            }
         }
     }
 
@@ -169,28 +171,30 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     private suspend fun handleHttpRequest(
         payload: WebviewHandler.Companion.RequestPayload<Action_V2>
     ) {
-        val responseText = when (payload.method) {
-            "GET" -> httpClient.get(url = payload.url, headers = payload.headers)
-            "POST" -> httpClient.post(
-                url = payload.url,
-                headers = payload.headers,
-                requestBody = payload.body?.toRequestBody()
-            )
+        val responseText = withContext(Dispatchers.IO) {
+            when (payload.method) {
+                "GET" -> httpClient.get(url = payload.url, headers = payload.headers)
+                "POST" -> httpClient.post(
+                    url = payload.url,
+                    headers = payload.headers,
+                    requestBody = payload.body?.toRequestBody()
+                )
 
-            "PUT" -> httpClient.put(
-                url = payload.url,
-                headers = payload.headers,
-                requestBody = payload.body?.toRequestBody()
-            )
+                "PUT" -> httpClient.put(
+                    url = payload.url,
+                    headers = payload.headers,
+                    requestBody = payload.body?.toRequestBody()
+                )
 
-            "DELETE" -> httpClient.delete(
-                url = payload.url,
-                headers = payload.headers,
-                requestBody = payload.body?.toRequestBody()
-            )
+                "DELETE" -> httpClient.delete(
+                    url = payload.url,
+                    headers = payload.headers,
+                    requestBody = payload.body?.toRequestBody()
+                )
 
-            else -> throw IllegalArgumentException("Invalid method")
-        }.body.string()
+                else -> throw IllegalArgumentException("Invalid method")
+            }.body.string()
+        }
 
         val response = WebviewHandler.Companion.ResponsePayload(
             requestId = payload.requestId, responseText = responseText

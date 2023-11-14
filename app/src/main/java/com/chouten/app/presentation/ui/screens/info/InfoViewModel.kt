@@ -134,19 +134,26 @@ class InfoViewModel @Inject constructor(
      * The sources, servers and bundle are stored within their own <PREFIX>_<source|server|bundle>.json files
      */
     // TODO: Look into using this to determine if we should re-fetch the data
-    val FILE_PREFIX: UUID = UUID.randomUUID().let {
-        // Check if a lock file exists for the current media
-        // If it does, we can't use the UUID
-        var uuid = it
-        while (application.cacheDir.resolve("${uuid}_lock").exists()) {
-            // If it does, we generate a new UUID
-            uuid = UUID.randomUUID()
-        }
-        application.cacheDir.resolve("${uuid}_lock").createNewFile()
-        uuid
-    }
+    lateinit var FILE_PREFIX: UUID
+
+    private lateinit var code: String
 
     init {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                FILE_PREFIX = UUID.randomUUID().let {
+                    // Check if a lock file exists for the current media
+                    // If it does, we can't use the UUID
+                    var uuid = it
+                    while (application.cacheDir.resolve("${uuid}_lock").exists()) {
+                        // If it does, we generate a new UUID
+                        uuid = UUID.randomUUID()
+                    }
+                    application.cacheDir.resolve("${uuid}_lock").createNewFile()
+                    uuid
+                }
+            }
+        }
         viewModelScope.launch {
             metadataHandler.logFn = { log(content = it) }
             epListHandler.logFn = { log(content = it) }
@@ -182,9 +189,21 @@ class InfoViewModel @Inject constructor(
     }
 
     private suspend fun getCode(): String {
-        return moduleUseCases.getModuleUris().find {
-            it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-        }?.code?.info?.getOrNull(0)?.code ?: ""
+        return if (!::code.isInitialized) {
+            withContext(Dispatchers.IO) {
+                val moduleId =
+                    application.moduleDatastore.data.firstOrNull()?.selectedModuleId
+                        ?: return@withContext ""
+                val module = moduleUseCases.getModuleUris().find {
+                    it.id == moduleId
+                } ?: return@withContext ""
+                code = module.code?.info?.getOrNull(0)?.code ?: run {
+                    log(content = "Failed to find info code for ${module.name}")
+                    return@run ""
+                }
+                code
+            }
+        } else code
     }
 
     suspend fun getInfo(title: String, url: String) {
