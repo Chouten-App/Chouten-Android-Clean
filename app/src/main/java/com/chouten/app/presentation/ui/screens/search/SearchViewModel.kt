@@ -13,6 +13,7 @@ import com.chouten.app.domain.repository.WebviewHandler
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
@@ -50,6 +52,8 @@ class SearchViewModel @Inject constructor(
      * Job used for launching the debounced search when the query changes
      */
     private var searchJob: Job? = null
+
+    lateinit var code: String
 
     /**
      * Used for determining if we should re-search when the module changes
@@ -89,6 +93,9 @@ class SearchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            reloadCode()
+        }
+        viewModelScope.launch {
             webviewHandler.logFn = { message ->
                 viewModelScope.launch {
                     logUseCases.insertLog(
@@ -115,6 +122,21 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    private suspend fun reloadCode() {
+        withContext(Dispatchers.IO) {
+            val moduleId =
+                application.moduleDatastore.data.firstOrNull()?.selectedModuleId
+                    ?: return@withContext
+            val module = moduleUseCases.getModuleUris().find {
+                it.id == moduleId
+            } ?: return@withContext
+            code = module.code?.search?.getOrNull(0)?.code ?: run {
+                logUseCases.insertLog(LogEntry(entryContent = "Failed to find search code for ${module.name}"))
+                return@run ""
+            }
+        }
+    }
+
     /**
      * Uses the currently active module to search for the query
      */
@@ -128,17 +150,16 @@ class SearchViewModel @Inject constructor(
             savedStateHandle.getStateFlow("searchQuery", "").firstOrNull()
         savedStateHandle["searchResults"] = Resource.Loading(null)
 
-        val moduleId = application.moduleDatastore.data.firstOrNull()?.selectedModuleId ?: return
-        val module = moduleUseCases.getModuleUris().find {
-            it.id == moduleId
-        } ?: return
-        val code = module.code?.search?.getOrNull(0)?.code ?: ""
+        if (lastUsedModule != application.moduleDatastore.data.firstOrNull()?.selectedModuleId) {
+            reloadCode()
+        }
 
         webviewHandler.load(
-            code, WebviewHandler.Companion.WebviewPayload(
+            code,
+            WebviewHandler.Companion.WebviewPayload(
                 query = searchQuery, action = Payloads_V2.Action_V2.SEARCH
             )
         )
-        lastUsedModule = module.id
+        lastUsedModule = application.moduleDatastore.data.firstOrNull()?.selectedModuleId ?: ""
     }
 }

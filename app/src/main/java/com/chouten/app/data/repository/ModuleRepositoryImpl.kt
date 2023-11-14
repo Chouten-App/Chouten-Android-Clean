@@ -33,53 +33,55 @@ class ModuleRepositoryImpl @Inject constructor(
         val preferences = context.filepathDatastore.data.first()
         val contentResolver = context.contentResolver
 
-        /*
+        return withContext(Dispatchers.IO) {
+            /*
         moduleDirUri is a ChildDocumentsUri (a uri which points to a directory
         which contains child documents)
          */
-        val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
+            val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
 
-        val moduleDirs = mutableListOf<Uri>()
-        contentResolver.query(
-            moduleDirUri, arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
-            ), null, null, null
-        )?.use { cursor ->
-            val displayNameIndex =
-                cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-            val documentIdIndex =
-                cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            while (cursor.moveToNext()) {
+            val moduleDirs = mutableListOf<Uri>()
+            contentResolver.query(
+                moduleDirUri, arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                ), null, null, null
+            )?.use { cursor ->
+                val displayNameIndex =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val documentIdIndex =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                while (cursor.moveToNext()) {
 
-                // Ignore the current directory
-                if (cursor.getString(documentIdIndex) == DocumentsContract.getTreeDocumentId(
-                        moduleDirUri
+                    // Ignore the current directory
+                    if (cursor.getString(documentIdIndex) == DocumentsContract.getTreeDocumentId(
+                            moduleDirUri
+                        )
+                    ) {
+                        continue
+                    }
+
+                    val moduleUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                        moduleDirUri, cursor.getString(documentIdIndex)
                     )
-                ) {
-                    continue
-                }
 
-                val moduleUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                    moduleDirUri, cursor.getString(documentIdIndex)
-                )
+                    // The mime type of the moduleUri is not a directory, we
+                    // want to skip it
+                    if (moduleUri == null || DocumentFile.fromTreeUri(
+                            context,
+                            moduleUri
+                        )?.isDirectory != true
+                    ) {
+                        continue
+                    }
 
-                // The mime type of the moduleUri is not a directory, we
-                // want to skip it
-                if (moduleUri == null || DocumentFile.fromTreeUri(
-                        context,
+                    moduleDirs.add(
                         moduleUri
-                    )?.isDirectory != true
-                ) {
-                    continue
+                    )
                 }
-
-                moduleDirs.add(
-                    moduleUri
-                )
-            }
-        } ?: throw IOException("Could not read module directory")
-        return moduleDirs
+            } ?: throw IOException("Could not read module directory")
+            return@withContext moduleDirs
+        }
     }
 
     /**
@@ -95,32 +97,35 @@ class ModuleRepositoryImpl @Inject constructor(
         val contentResolver = context.contentResolver
         val preferences = context.filepathDatastore.data.first()
 
-        /**
-         * The base module directory (CHOUTEN_ROOT_DIR/Modules/)
-         */
-        val baseModuleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
+        return withContext(Dispatchers.IO) {
+            /**
+             * The base module directory (CHOUTEN_ROOT_DIR/Modules/)
+             */
+            val baseModuleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
 
-        /**
-         * The name of the module (e.g Module 0, Module 1, etc)
-         */
-        val moduleName = "Module ${getModuleDirs().size}"
+            /**
+             * The name of the module (e.g Module 0, Module 1, etc)
+             */
+            val moduleName = "Module ${getModuleDirs().size}"
 
-        /**
-         * The module directory (not a child document uri)
-         */
-        val moduleDirDocument = DocumentsContract.createDocument(
-            contentResolver, baseModuleDirUri, DocumentsContract.Document.MIME_TYPE_DIR, moduleName
-        ) ?: throw IOException("Could not create module directory")
+            /**
+             * The module directory (not a child document uri)
+             */
+            val moduleDirDocument = DocumentsContract.createDocument(
+                contentResolver,
+                baseModuleDirUri,
+                DocumentsContract.Document.MIME_TYPE_DIR,
+                moduleName
+            ) ?: throw IOException("Could not create module directory")
 
-        /**
-         * The working child document uri of the directory for the module
-         */
-        val moduleDirUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-            baseModuleDirUri, DocumentsContract.getDocumentId(moduleDirDocument)
-        )
+            /**
+             * The working child document uri of the directory for the module
+             */
+            val moduleDirUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                baseModuleDirUri, DocumentsContract.getDocumentId(moduleDirDocument)
+            )
 
-        // Unzip the module uri into the module directory
-        withContext(Dispatchers.IO) {
+            // Unzip the module uri into the module directory
             val inputStream = contentResolver.openInputStream(uri)
                 ?: throw IllegalArgumentException("Invalid module uri")
             val zipInputStream = ZipInputStream(inputStream.buffered())
@@ -234,10 +239,8 @@ class ModuleRepositoryImpl @Inject constructor(
 
             // Close all streams
             listOf(inputStream, zipInputStream).forEach { it.close() }
-
+            return@withContext moduleDirUri
         }
-
-        return moduleDirUri
     }
 
     /**
@@ -248,17 +251,19 @@ class ModuleRepositoryImpl @Inject constructor(
      * @throws IOException if the folder cannot be deleted (e.g permissions)
      */
     override suspend fun removeModule(uri: Uri) {
-        val moduleDirs = getModuleDirs()
-        if (!moduleDirs.contains(uri)) {
-            throw IllegalArgumentException("Module does not exist")
+        withContext(Dispatchers.IO) {
+            val moduleDirs = getModuleDirs()
+            if (!moduleDirs.contains(uri)) {
+                throw IllegalArgumentException("Module does not exist")
+            }
+
+            // Remove the suffixed /children from the uri
+            val moduleDirUri = uri.toString().removeSuffix("/children").toUri()
+            val moduleDocument = DocumentFile.fromTreeUri(context, moduleDirUri)
+                ?: throw IllegalArgumentException("Invalid module uri")
+
+            // Delete the module directory
+            if (!moduleDocument.delete()) throw IOException("Could not delete module directory")
         }
-
-        // Remove the suffixed /children from the uri
-        val moduleDirUri = uri.toString().removeSuffix("/children").toUri()
-        val moduleDocument = DocumentFile.fromTreeUri(context, moduleDirUri)
-            ?: throw IllegalArgumentException("Invalid module uri")
-
-        // Delete the module directory
-        if (!moduleDocument.delete()) throw IOException("Could not delete module directory")
     }
 }

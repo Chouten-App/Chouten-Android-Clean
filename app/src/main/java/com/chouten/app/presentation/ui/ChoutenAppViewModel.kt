@@ -14,11 +14,13 @@ import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.acra.config.CoreConfiguration
 import org.acra.data.CrashReportData
 import java.io.File
@@ -47,29 +49,32 @@ class ChoutenAppViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            application.crashReportStore.data.firstOrNull()?.let {
-                // If either of the above are not null, we should
-                // de-select the current module
-                if (it.lastCrashReport != null || it.unsentCrashReport != null) {
-                    application.moduleDatastore.updateData { preferences ->
-                        preferences.copy(selectedModuleId = "")
+            withContext(Dispatchers.IO) {
+                application.crashReportStore.data.firstOrNull()?.let {
+                    // If either of the above are not null, we should
+                    // de-select the current module
+                    if (it.lastCrashReport != null || it.unsentCrashReport != null) {
+                        application.moduleDatastore.updateData { preferences ->
+                            preferences.copy(selectedModuleId = "")
+                        }
+                        application.crashReportStore.updateData { preferences ->
+                            preferences.copy(lastCrashReport = null)
+                        }
                     }
-                    application.crashReportStore.updateData { preferences ->
-                        preferences.copy(lastCrashReport = null)
-                    }
-                }
 
-                if (it.unsentCrashReport != null) {
-                    DiscordReportSenderFactory().create(application, CoreConfiguration()).send(
-                        application,
-                        CrashReportData(
-                            json = File(it.unsentCrashReport.reportPath).bufferedReader().readText()
+                    if (it.unsentCrashReport != null) {
+                        DiscordReportSenderFactory().create(application, CoreConfiguration()).send(
+                            application,
+                            CrashReportData(
+                                json = File(it.unsentCrashReport.reportPath).bufferedReader()
+                                    .readText()
+                            )
                         )
-                    )
-                    application.crashReportStore.updateData { preferences ->
-                        // The crash report has been sent so we don't need to report it
-                        // as the last crash report anymore.
-                        preferences.copy(lastCrashReport = null, unsentCrashReport = null)
+                        application.crashReportStore.updateData { preferences ->
+                            // The crash report has been sent so we don't need to report it
+                            // as the last crash report anymore.
+                            preferences.copy(lastCrashReport = null, unsentCrashReport = null)
+                        }
                     }
                 }
             }
@@ -81,7 +86,9 @@ class ChoutenAppViewModel @Inject constructor(
      * @see [modules]
      */
     suspend fun getModules() {
-        _modules.emit(moduleUseCases.getModuleUris())
+        withContext(Dispatchers.IO) {
+            _modules.emit(moduleUseCases.getModuleUris())
+        }
     }
 
     /**
@@ -91,10 +98,12 @@ class ChoutenAppViewModel @Inject constructor(
      * expects directory to be a valid document uri.
      */
     suspend fun setModuleDirectory(context: Context, directory: Uri) {
-        context.filepathDatastore.updateData { preferences ->
-            preferences.copy(
-                CHOUTEN_ROOT_DIR = directory, IS_CHOUTEN_MODULE_DIR_SET = true
-            )
+        withContext(Dispatchers.IO) {
+            context.filepathDatastore.updateData { preferences ->
+                preferences.copy(
+                    CHOUTEN_ROOT_DIR = directory, IS_CHOUTEN_MODULE_DIR_SET = true
+                )
+            }
         }
     }
 
@@ -104,16 +113,20 @@ class ChoutenAppViewModel @Inject constructor(
      * expects uri to be a valid document uri.
      */
     suspend fun installModule(uri: Uri, showSnackbar: (SnackbarModel) -> Unit) {
-        try {
-            moduleUseCases.addModule(uri)
-            _modules.emit(moduleUseCases.getModuleUris())
-        } catch (e: Exception) {
-            e.printStackTrace()
-            showSnackbar(
-                SnackbarModel(
-                    message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
+        withContext(Dispatchers.IO) {
+            try {
+                moduleUseCases.addModule(uri)
+                _modules.emit(moduleUseCases.getModuleUris())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                showSnackbar(
+                    SnackbarModel(
+                        message = e.message ?: "Unknown error",
+                        actionLabel = "Dismiss",
+                        isError = true
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -125,19 +138,23 @@ class ChoutenAppViewModel @Inject constructor(
      * @param showSnackbar A lambda to show a snackbar with the given [SnackbarModel].
      */
     suspend fun removeModule(uri: Uri, showSnackbar: (SnackbarModel) -> Unit) {
-        try {
-            moduleUseCases.removeModule(uri)
-            _modules.emit(moduleUseCases.getModuleUris())
-            // TODO: Update the module preferences to remove the module from the
-            // auto-update list (if it is in the list) and make sure it is
-            // not the current module.
-        } catch (e: Exception) {
-            e.printStackTrace()
-            showSnackbar(
-                SnackbarModel(
-                    message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
+        withContext(Dispatchers.IO) {
+            try {
+                moduleUseCases.removeModule(uri)
+                _modules.emit(moduleUseCases.getModuleUris())
+                // TODO: Update the module preferences to remove the module from the
+                // auto-update list (if it is in the list) and make sure it is
+                // not the current module.
+            } catch (e: Exception) {
+                e.printStackTrace()
+                showSnackbar(
+                    SnackbarModel(
+                        message = e.message ?: "Unknown error",
+                        actionLabel = "Dismiss",
+                        isError = true
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -150,33 +167,37 @@ class ChoutenAppViewModel @Inject constructor(
      * @see [removeModule]
      */
     suspend fun removeModule(model: ModuleModel, showSnackbar: (SnackbarModel) -> Unit) {
-        try {
-            moduleUseCases.removeModule(model)
-            _modules.emit(modules.value.filter { it != model })
+        withContext(Dispatchers.IO) {
+            try {
+                moduleUseCases.removeModule(model)
+                _modules.emit(modules.value.filter { it != model })
 
-            // Update the preferences to remove the module from the auto-update list
-            // and make sure it is not set as the current module.
-            application.baseContext.moduleDatastore.data.first().let {
-                if (it.selectedModuleId == model.id) {
-                    application.baseContext.moduleDatastore.updateData { preferences ->
-                        preferences.copy(selectedModuleId = "")
+                // Update the preferences to remove the module from the auto-update list
+                // and make sure it is not set as the current module.
+                application.baseContext.moduleDatastore.data.first().let {
+                    if (it.selectedModuleId == model.id) {
+                        application.baseContext.moduleDatastore.updateData { preferences ->
+                            preferences.copy(selectedModuleId = "")
+                        }
+                    }
+                    if (it.autoUpdatingModules.contains(model.id)) {
+                        application.baseContext.moduleDatastore.updateData { preferences ->
+                            preferences.copy(
+                                autoUpdatingModules = preferences.autoUpdatingModules - model.id
+                            )
+                        }
                     }
                 }
-                if (it.autoUpdatingModules.contains(model.id)) {
-                    application.baseContext.moduleDatastore.updateData { preferences ->
-                        preferences.copy(
-                            autoUpdatingModules = preferences.autoUpdatingModules - model.id
-                        )
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            showSnackbar(
-                SnackbarModel(
-                    message = e.message ?: "Unknown error", actionLabel = "Dismiss", isError = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                showSnackbar(
+                    SnackbarModel(
+                        message = e.message ?: "Unknown error",
+                        actionLabel = "Dismiss",
+                        isError = true
+                    )
                 )
-            )
+            }
         }
     }
 

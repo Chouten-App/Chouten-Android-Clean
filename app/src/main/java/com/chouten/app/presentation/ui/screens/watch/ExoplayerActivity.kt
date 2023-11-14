@@ -82,10 +82,12 @@ import com.chouten.app.presentation.ui.screens.info.InfoResult
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
@@ -506,21 +508,23 @@ class ExoplayerActivity : ComponentActivity() {
         val uuid = bundle.mediaUuid
 
         lifecycleScope.launch {
-            // Read the files and get the data
-            cacheDir.resolve("${uuid}_server.json").useLines { lines ->
-                val text = lines.joinToString("\n")
-                val result = json.decodeFromString<List<WatchResult.ServerData>>(text)
-                servers = result
-            }
-            cacheDir.resolve("${uuid}_sources.json").useLines { lines ->
-                val text = lines.joinToString("\n")
-                val result = json.decodeFromString<WatchResult>(text)
-                sources = result
-            }
-            cacheDir.resolve("${uuid}_media.json").useLines { lines ->
-                val text = lines.joinToString("\n")
-                val result = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
-                media = result
+            withContext(Dispatchers.IO) {
+                // Read the files and get the data
+                cacheDir.resolve("${uuid}_server.json").useLines { lines ->
+                    val text = lines.joinToString("\n")
+                    val result = json.decodeFromString<List<WatchResult.ServerData>>(text)
+                    servers = result
+                }
+                cacheDir.resolve("${uuid}_sources.json").useLines { lines ->
+                    val text = lines.joinToString("\n")
+                    val result = json.decodeFromString<WatchResult>(text)
+                    sources = result
+                }
+                cacheDir.resolve("${uuid}_media.json").useLines { lines ->
+                    val text = lines.joinToString("\n")
+                    val result = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                    media = result
+                }
             }
         }
         watchBundle = bundle
