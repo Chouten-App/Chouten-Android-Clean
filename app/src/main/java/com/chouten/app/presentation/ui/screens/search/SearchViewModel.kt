@@ -78,7 +78,7 @@ class SearchViewModel @Inject constructor(
                     _searchQuery.debounce(500).distinctUntilChanged().collectLatest {
                         savedStateHandle["searchQuery"] = it
                         if (it.isBlank()) {
-                            savedStateHandle["searchResults"] = Resource.Uninitialized("")
+                            _searchResults.emit(Resource.Uninitialized())
                         } else {
                             _searchQuery.emit(it)
                             search()
@@ -88,8 +88,9 @@ class SearchViewModel @Inject constructor(
             }
         }
 
-    val searchResults: StateFlow<Resource<List<SearchResult>>> =
-        savedStateHandle.getStateFlow("searchResults", Resource.Uninitialized())
+    private val _searchResults =
+        MutableStateFlow<Resource<List<SearchResult>>>(Resource.Uninitialized())
+    val searchResults: StateFlow<Resource<List<SearchResult>>> = _searchResults
 
     init {
         viewModelScope.launch {
@@ -109,14 +110,16 @@ class SearchViewModel @Inject constructor(
             webviewHandler.initialize(application) { res ->
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
                     viewModelScope.launch {
-                        savedStateHandle["searchResults"] = Resource.Error(
-                            message = "Failed to search for $searchQuery", data = null
+                        _searchResults.emit(
+                            Resource.Error(
+                                message = "Failed to search for $searchQuery", data = null
+                            )
                         )
                     }
                     return@initialize
                 }
                 viewModelScope.launch {
-                    savedStateHandle["searchResults"] = Resource.Success(res.result.result)
+                    _searchResults.emit(Resource.Success(res.result.result))
                 }
             }
         }
@@ -142,13 +145,13 @@ class SearchViewModel @Inject constructor(
      */
     suspend fun search() {
         if (searchQuery.isBlank()) {
-            savedStateHandle["searchResults"] = Resource.Uninitialized("")
+            _searchResults.emit(Resource.Uninitialized())
             return
         }
 
         savedStateHandle["lastSearchQuery"] =
             savedStateHandle.getStateFlow("searchQuery", "").firstOrNull()
-        savedStateHandle["searchResults"] = Resource.Loading(null)
+        _searchResults.emit(Resource.Loading(null))
 
         if (lastUsedModule != application.moduleDatastore.data.firstOrNull()?.selectedModuleId) {
             reloadCode()
