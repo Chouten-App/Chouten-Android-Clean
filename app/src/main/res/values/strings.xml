@@ -54,4 +54,6 @@
     <string name="crash_reports_preference_title">Send Crash Reports</string>
     <string name="crash_reports_preference_description">Send crash reports to the developer to help improve the app.</string>
     <string name="general_preference_description">Change General App Settings</string>
+    <string name="duplicate_module_id">Duplicate module ID: %1$s</string>
+    <string name="duplicated_module_id">Duplicated Module ID: %1$s</string>
 </resources>

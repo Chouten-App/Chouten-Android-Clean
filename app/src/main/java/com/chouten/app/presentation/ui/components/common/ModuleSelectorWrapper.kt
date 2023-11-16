@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +45,7 @@ import coil.compose.AsyncImage
 import com.chouten.app.R
 import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.UiText
+import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.ModulePreferences
@@ -110,6 +112,16 @@ fun ModuleSelectorWrapper(
                         }
                         scaffoldState.bottomSheetState.hide()
                     }
+                }, onError = {
+                    it.printStackTrace()
+                    snackbarLambda(
+                        SnackbarModel(
+                            isError = true,
+                            message = it.message ?: "Unknown error"
+                        )
+                    )
+                }, onLog = {
+                    viewModel.log(it)
                 })
                 Divider(
                     modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
@@ -155,9 +167,41 @@ fun ModuleSelectorWrapper(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModuleSelector(
-    modules: StateFlow<List<ModuleModel>>, onModuleSelected: (ModuleModel) -> Unit = {}
+    modules: StateFlow<List<ModuleModel>>,
+    onModuleSelected: (ModuleModel) -> Unit = {},
+    onError: (Throwable) -> Unit = {},
+    onLog: (LogEntry) -> Unit = {}
 ) {
-    val collectedModules by modules.collectAsState()
+    val _collectedModules by modules.collectAsState()
+    // We want to remove duplicate IDs from the module list
+    val collectedModules = _collectedModules.distinctBy { it.id }
+    if (collectedModules.size != _collectedModules.size) {
+        // Find which module id is duplicated
+        val duplicatedModule = _collectedModules.first { module ->
+            _collectedModules.count { it.id == module.id } > 1
+        }.id
+
+        onLog(
+            LogEntry(
+                entryHeader = stringResource(R.string.duplicated_module_id, duplicatedModule),
+                entryContent = _collectedModules.filter {
+                    it.id == duplicatedModule
+                }.joinToString("\n") {
+                    "Duplicated ID found: ${it.name} - ${it.version}"
+                }
+            )
+        )
+
+        onError(
+            IllegalArgumentException(
+                stringResource(
+                    R.string.duplicate_module_id,
+                    duplicatedModule
+                )
+            )
+        )
+    }
+
     LazyColumn {
         item {
             Column(
