@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chouten.app.DiscordReportSenderFactory
+import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.crashReportStore
@@ -207,5 +208,11 @@ class ChoutenAppViewModel @Inject constructor(
      */
     fun runAsync(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
+    }
+
+    fun log(log: LogEntry) {
+        viewModelScope.launch {
+            logUseCases.insertLog(log)
+        }
     }
 }
