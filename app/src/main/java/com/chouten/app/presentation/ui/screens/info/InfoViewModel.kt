@@ -92,11 +92,13 @@ class InfoViewModel @Inject constructor(
     private var _title = ""
     private var _url = ""
 
-    val infoResults: StateFlow<Resource<InfoResult>> =
-        savedStateHandle.getStateFlow("infoResults", Resource.Uninitialized())
+    private val _infoResults: MutableStateFlow<Resource<InfoResult>> =
+        MutableStateFlow(Resource.Uninitialized())
+    val infoResults: StateFlow<Resource<InfoResult>> = _infoResults
 
-    val episodeList: StateFlow<Resource<List<InfoResult.MediaListItem>>> =
-        savedStateHandle.getStateFlow("epListResults", Resource.Uninitialized())
+    private val _episodeList: MutableStateFlow<Resource<List<InfoResult.MediaListItem>>> =
+        MutableStateFlow(Resource.Uninitialized())
+    val episodeList: StateFlow<Resource<List<InfoResult.MediaListItem>>> = _episodeList
 
     /**
      * The list of media items. Made from concatenating the [infoResults] and [episodeList] data
@@ -162,8 +164,10 @@ class InfoViewModel @Inject constructor(
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
                     viewModelScope.launch {
                         log(content = "Failed to get info for $_title.\n${res.result.result}")
-                        savedStateHandle["infoResults"] = Resource.Error(
-                            message = "Failed to get info for $_title", data = null
+                        _infoResults.emit(
+                            Resource.Error(
+                                message = "Failed to get info for $_title", data = null
+                            )
                         )
                     }
                     return@initialize
@@ -173,18 +177,16 @@ class InfoViewModel @Inject constructor(
                         res.result.result.seasons?.firstOrNull()
                     )
                     seasonCount = res.result.result.seasons?.size ?: 1
-                    if (infoResults.firstOrNull() is Resource.Success) {
-                        savedStateHandle["infoResults"] = Resource.Success(
-                            infoResults.firstOrNull()?.data?.copy(
+                    _infoResults.emit(infoResults.firstOrNull()?.let {
+                        if (it !is Resource.Success) return@let null
+                        Resource.Success(
+                            it.data.copy(
                                 epListURLs = res.result.result.epListURLs
                             )
                         )
-                    } else {
-                        savedStateHandle["infoResults"] = Resource.Success(res.result.result)
-                    }
+                    } ?: Resource.Success(res.result.result))
                 }
             }
-
         }
     }
 
@@ -223,45 +225,49 @@ class InfoViewModel @Inject constructor(
             if (res.action == Payloads_V2.Action_V2.ERROR) {
                 viewModelScope.launch {
                     log(content = "Failed to get episodes for $_title.\n${res.result.result}")
-                    savedStateHandle["epListResults"] = Resource.Error(
-                        message = "Failed to get episodes for $_title", data = null
+                    _episodeList.emit(
+                        Resource.Error(
+                            message = "Failed to get episodes for $_title", data = null
+                        )
                     )
                 }
                 return@initialize
             }
             viewModelScope.launch {
-                // Combine the results of `savedStateHandle["epListResults"]` and `res.result.result`
+                // Combine the results of `episodeList` and `res.result.result`
                 // into a single list. This is done because we don't load all the episodes at the same
-                // time - previous episodes may be contained in the savedStateHandle and we don't want
+                // time - previous episodes may be contained in the flow and we don't want
                 // to lose them.
                 // Using a set means that duplicate entries will not be added to the list.
                 val episodes: MutableSet<InfoResult.MediaListItem> =
-                    savedStateHandle.get<Resource<List<InfoResult.MediaListItem>>>("epListResults")?.data?.toMutableSet()
+                    episodeList.firstOrNull()?.data?.toMutableSet()
                         ?: mutableSetOf()
                 episodes.addAll(res.result.result)
                 if (episodes.size > 1) {
                     val collectedInfoResults = infoResults.firstOrNull()?.data
                     collectedInfoResults?.let {
-                        savedStateHandle["infoResults"] = Resource.Success(
-                            it.copy(
-                                seasons = (it.seasons?.plus(episodes.mapIndexed { index, season ->
-                                    val resultSeason = InfoResult.Season(
-                                        name = season.title,
-                                        url = season.list.firstOrNull()?.url ?: ""
-                                    )
-                                    if (it.seasons.size.plus(
-                                            it.mediaList?.size ?: 0
-                                        ) == 0 && index == 0
-                                    ) {
-                                        _selectedSeason.emit(resultSeason)
-                                    }
-                                    resultSeason
-                                })?.toSet()?.toList())
+                        _infoResults.emit(
+                            Resource.Success(
+                                it.copy(
+                                    seasons = (it.seasons?.plus(episodes.mapIndexed { index, season ->
+                                        val resultSeason = InfoResult.Season(
+                                            name = season.title,
+                                            url = season.list.firstOrNull()?.url ?: ""
+                                        )
+                                        if (it.seasons.size.plus(
+                                                it.mediaList?.size ?: 0
+                                            ) == 0 && index == 0
+                                        ) {
+                                            _selectedSeason.emit(resultSeason)
+                                        }
+                                        resultSeason
+                                    })?.toSet()?.toList())
+                                )
                             )
                         )
                     }
                 }
-                savedStateHandle["epListResults"] = Resource.Success(episodes.toList())
+                _episodeList.emit(Resource.Success(episodes.toList()))
                 if (_paginatedAll) {
                     paginatedAll = true
                 }
@@ -286,13 +292,18 @@ class InfoViewModel @Inject constructor(
             _selectedSeason.emit(infoResults.value.data?.seasons?.find { it == season })
             // If the media doesn't appear to have been loaded, request it using the season url
             if (getMediaList().find { it.title == season.name } == null) {
-                savedStateHandle["infoResults"] = Resource.Success(
-                    infoResults.firstOrNull()?.data?.copy(
-                        epListURLs = listOf(season.url)
+                infoResults.firstOrNull()?.data?.let {
+                    _infoResults.emit(
+                        Resource.Success(
+                            it.copy(
+                                epListURLs = listOf(season.url)
+                            )
+                        )
                     )
+                }
+                _episodeList.emit(
+                    Resource.Uninitialized()
                 )
-                savedStateHandle["epListResults"] =
-                    Resource.Uninitialized<List<InfoResult.MediaListItem>>()
             }
         }
     }
