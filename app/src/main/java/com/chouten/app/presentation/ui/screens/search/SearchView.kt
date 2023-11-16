@@ -105,7 +105,7 @@ fun SearchView(
         }
     }
 
-    ModuleSelectorWrapper(viewModel = appViewModel) {
+    ModuleSelectorWrapper(viewModel = appViewModel, snackbarLambda = snackbarLambda) {
         AnimatedVisibility(
             visible = moduleStore?.selectedModuleId?.isNotBlank() == true,
             enter = fadeIn(),
