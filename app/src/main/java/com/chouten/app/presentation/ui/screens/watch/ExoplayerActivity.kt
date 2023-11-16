@@ -82,13 +82,10 @@ import com.chouten.app.presentation.ui.screens.info.InfoResult
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -136,10 +133,23 @@ class ExoplayerActivity : ComponentActivity() {
      */
     private var isInitialized = false
 
-    private lateinit var media: List<InfoResult.MediaListItem>
-    private lateinit var watchBundle: WatchBundle
-    private lateinit var sources: WatchResult
-    private lateinit var servers: List<WatchResult.ServerData>
+    private val media: List<InfoResult.MediaListItem> by lazy {
+        getLazyFile(watchBundle.mediaUuid, "media")
+    }
+
+    private val watchBundle: WatchBundle by lazy {
+        intent?.getStringExtra(BUNDLE)?.let {
+            val bundle = Json.decodeFromString<WatchBundle>(it)
+            bundle
+        } ?: throw IllegalArgumentException("UUID for Content has not been Set")
+    }
+    private val sources: WatchResult by lazy {
+        getLazyFile(watchBundle.mediaUuid, "sources")
+    }
+
+    private val servers: List<WatchResult.ServerData> by lazy {
+        getLazyFile(watchBundle.mediaUuid, "servers")
+    }
 
     private lateinit var mimeType: String
 
@@ -204,16 +214,8 @@ class ExoplayerActivity : ComponentActivity() {
             onDestroy()
         }
 
-        intent?.getStringExtra(BUNDLE)?.let {
-            val bundle = Json.decodeFromString<WatchBundle>(it)
-            savedInstanceState?.putString(BUNDLE, it)
-            extractBundle(bundle)
-        } ?: throw IllegalArgumentException("UUID for Content has not been Set")
-
         savedInstanceState?.let {
             lifecycleScope.launch {
-                val bundle = Json.decodeFromString<WatchBundle>(it.getString(BUNDLE, ""))
-                extractBundle(bundle)
                 isPlaying.emit(it.getBoolean(IS_PLAYING))
                 currentPlaybackPosition.emit(it.getLong(PLAYBACK_POSITION))
             }
@@ -409,9 +411,9 @@ class ExoplayerActivity : ComponentActivity() {
                                 if (selectedMediaIndex < ((media.getOrNull(0)?.list?.size)
                                         ?: 0) - 1
                                 ) {
-                                    watchBundle = watchBundle.copy(
-                                        selectedMediaIndex = selectedMediaIndex + 1
-                                    )
+//                                    watchBundle = watchBundle.copy(
+//                                        selectedMediaIndex = selectedMediaIndex + 1
+//                                    )
                                 } else {
                                     snackbarLambda(
                                         SnackbarModel(
@@ -497,39 +499,6 @@ class ExoplayerActivity : ComponentActivity() {
         exoplayer.release()
     }
 
-    @kotlin.OptIn(ExperimentalSerializationApi::class)
-    private fun extractBundle(bundle: WatchBundle) {
-        val json = Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-            explicitNulls = false
-        }
-
-        val uuid = bundle.mediaUuid
-
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                // Read the files and get the data
-                cacheDir.resolve("${uuid}_server.json").useLines { lines ->
-                    val text = lines.joinToString("\n")
-                    val result = json.decodeFromString<List<WatchResult.ServerData>>(text)
-                    servers = result
-                }
-                cacheDir.resolve("${uuid}_sources.json").useLines { lines ->
-                    val text = lines.joinToString("\n")
-                    val result = json.decodeFromString<WatchResult>(text)
-                    sources = result
-                }
-                cacheDir.resolve("${uuid}_media.json").useLines { lines ->
-                    val text = lines.joinToString("\n")
-                    val result = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
-                    media = result
-                }
-            }
-        }
-        watchBundle = bundle
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (!isInitialized) return
@@ -537,6 +506,26 @@ class ExoplayerActivity : ComponentActivity() {
         lifecycleScope.launch {
             outState.putBoolean(IS_PLAYING, isPlaying.first())
             outState.putLong(PLAYBACK_POSITION, currentPlaybackPosition.value)
+        }
+    }
+
+    /**
+     * Get a file from the cache directory, in the format "$uuid_$type.json"
+     * @param uuid: String - The UUID of the file
+     * @param type: String - The type of the file
+     * @return T - The file
+     */
+    private inline fun <reified T> getLazyFile(uuid: String, type: String): T {
+        val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            explicitNulls = false
+        }
+
+        return cacheDir.resolve("${uuid}_$type.json").useLines { lines ->
+            val text = lines.joinToString("\n")
+            val result = json.decodeFromString<T>(text)
+            result
         }
     }
 
