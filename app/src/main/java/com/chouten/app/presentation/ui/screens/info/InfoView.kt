@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -85,6 +86,7 @@ import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
 import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 
@@ -106,11 +108,19 @@ fun InfoView(
 
     val selectedSeason by infoViewModel.selectedSeason.collectAsState()
     var lastUrl by rememberSaveable { mutableStateOf(url) }
+    val switchValue by infoViewModel.switchValue.collectAsState()
+    val switchConfig by infoViewModel.switchConfig.collectAsState()
 
-    LaunchedEffect(infoResults, selectedSeason) {
+    LaunchedEffect(infoResults, selectedSeason, switchValue) {
         when (infoResults) {
             is Resource.Success -> {
                 val urls = infoResults.data?.epListURLs ?: listOf()
+                if (switchConfig?.options?.size == 2 && infoViewModel.cachedSwitchResults.firstOrNull()?.size == 2) {
+                    // We will force the viewmodel to emit the cached results
+                    infoViewModel.toggleSwitch(switchValue)
+                    return@LaunchedEffect
+                }
+
                 selectedSeason?.let {
                     if ((lastUrl != it.url) && (infoViewModel.getMediaList().find { media ->
                             media.title == it.name
@@ -145,7 +155,7 @@ fun InfoView(
     }
 
     LaunchedEffect(episodeList) {
-        if (infoViewModel.paginatedAll && infoViewModel.seasonCount <= 1) {
+        if (infoViewModel.paginatedAll && infoViewModel.seasonCount <= 1 && (switchConfig?.options?.size == 2 && infoViewModel.cachedSwitchResults.firstOrNull()?.size == 2)) {
             // We have no further episodes to load
             // so don't need the webview anymore.
             infoViewModel.epListHandler.destroy()
@@ -325,19 +335,33 @@ fun InfoView(
                             }
                         }
 
-                        Row(
-                            Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+                        AnimatedVisibility(
+                            visible = switchConfig?.options != null
                         ) {
-                            Switch(checked = false, onCheckedChange = {})
-                            Text(
-                                "Subbed",
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(
-                                    vertical = 6.dp, horizontal = 12.dp
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Switch(checked = switchValue, onCheckedChange = {
+                                    infoViewModel.viewModelScope.launch {
+                                        infoViewModel.toggleSwitch()
+                                    }
+                                })
+                                Text(
+                                    switchConfig?.options?.get(
+                                        if (SwitchConfig.isToggled(
+                                                switchValue, switchConfig!!
+                                            )
+                                        ) 1 else 0
+                                    ) ?: "",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(
+                                        vertical = 6.dp, horizontal = 12.dp
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         AnimatedVisibility(visible = !infoResults.data?.seasons.isNullOrEmpty()) {

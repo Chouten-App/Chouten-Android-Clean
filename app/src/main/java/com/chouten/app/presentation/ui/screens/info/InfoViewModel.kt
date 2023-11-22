@@ -107,6 +107,7 @@ data class SwitchConfig(
 class InfoViewModel @Inject constructor(
     val application: Application,
     private val moduleUseCases: ModuleUseCases,
+    private val switchConfigHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<SwitchConfig>>,
     private val metadataHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<InfoResult>>,
     val epListHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<InfoResult.MediaListItem>>>,
     private val logUseCases: LogUseCases,
@@ -115,6 +116,12 @@ class InfoViewModel @Inject constructor(
 
     private var _title = ""
     private var _url = ""
+
+    val switchValue: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val cachedSwitchResults: MutableStateFlow<MutableMap<String, Pair<Resource<InfoResult>, Resource<List<InfoResult.MediaListItem>>>>> =
+        MutableStateFlow(
+            mutableMapOf()
+        )
 
     private val _infoResults: MutableStateFlow<Resource<InfoResult>> =
         MutableStateFlow(Resource.Uninitialized())
@@ -164,6 +171,9 @@ class InfoViewModel @Inject constructor(
 
     private lateinit var code: String
 
+    private val _switchConfig: MutableStateFlow<SwitchConfig?> = MutableStateFlow(null)
+    val switchConfig: StateFlow<SwitchConfig?> = _switchConfig
+
     init {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -181,9 +191,35 @@ class InfoViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            switchConfigHandler.logFn = { log(content = it) }
             metadataHandler.logFn = { log(content = it) }
             epListHandler.logFn = { log(content = it) }
 
+            switchConfigHandler.initialize(application) { res ->
+                if (res.action == Payloads_V2.Action_V2.ERROR) {
+                    viewModelScope.launch {
+                        if (code.contains("function getSwitchConfig")) {
+                            // Not all modules have a switch config, we should only log if
+                            // there is a function but it fails
+                            log(content = "Failed to get switch config for $_title.\n${res.result.result}")
+                        }
+                        switchConfigHandler.destroy()
+                    }
+                    return@initialize
+                }
+                viewModelScope.launch {
+                    _switchConfig.emit(res.result.result)
+                    switchValue.emit(res.result.result.default == 1)
+
+                    metadataHandler.setGenericValue("switchConfig", res.result.result)
+                    metadataHandler.setGenericValue("switchValue", res.result.result.default == 1)
+
+                    epListHandler.setGenericValue("switchConfig", res.result.result)
+                    epListHandler.setGenericValue("switchValue", res.result.result.default == 1)
+
+                    switchConfigHandler.destroy()
+                }
+            }
             metadataHandler.initialize(application) { res ->
                 if (res.action == Payloads_V2.Action_V2.ERROR) {
                     viewModelScope.launch {
@@ -209,8 +245,32 @@ class InfoViewModel @Inject constructor(
                             )
                         )
                     } ?: Resource.Success(res.result.result))
+
+                    switchConfig.firstOrNull()?.let { config ->
+                        config.options.getOrNull(
+                            if (config.isToggled(config = config)) 1 else 0
+                        )
+                    }?.let {
+                        val switchResults = cachedSwitchResults.firstOrNull()
+                        if (switchResults?.get(it) == null) {
+                            switchResults?.set(
+                                it, Pair(
+                                    infoResults.firstOrNull() ?: Resource.Uninitialized(),
+                                    episodeList.firstOrNull() ?: Resource.Uninitialized()
+                                )
+                            )?.also {
+                                this@InfoViewModel.cachedSwitchResults.emit(switchResults)
+                            }
+                        }
+                    }
                 }
             }
+
+            switchConfigHandler.load(
+                getCode(), WebviewHandler.Companion.WebviewPayload(
+                    query = "", action = Payloads_V2.Action_V2.GET_SWITCH_CONFIG
+                )
+            )
         }
     }
 
@@ -291,6 +351,21 @@ class InfoViewModel @Inject constructor(
                         )
                     }
                 }
+                switchConfig.firstOrNull()?.let { config ->
+                    config.options.getOrNull(
+                        if (config.isToggled(config = config)) 1 else 0
+                    )
+                }?.let {
+                    cachedSwitchResults.firstOrNull()?.let { switchResults ->
+                        if (switchResults[it] == null || switchResults[it]?.second !is Resource.Success) {
+                            switchResults[it] = Pair(
+                                infoResults.firstOrNull() ?: Resource.Uninitialized(),
+                                Resource.Success(episodes.toList())
+                            )
+                            this@InfoViewModel.cachedSwitchResults.emit(switchResults)
+                        }
+                    }
+                }
                 _episodeList.emit(Resource.Success(episodes.toList()))
                 if (_paginatedAll) {
                     paginatedAll = true
@@ -316,6 +391,9 @@ class InfoViewModel @Inject constructor(
             _selectedSeason.emit(infoResults.value.data?.seasons?.find { it == season })
             // If the media doesn't appear to have been loaded, request it using the season url
             if (getMediaList().find { it.title == season.name } == null) {
+                cachedSwitchResults.emit(
+                    mutableMapOf()
+                )
                 infoResults.firstOrNull()?.data?.let {
                     _infoResults.emit(
                         Resource.Success(
@@ -329,6 +407,45 @@ class InfoViewModel @Inject constructor(
                     Resource.Uninitialized()
                 )
             }
+        }
+    }
+
+    suspend fun toggleSwitch(value: Boolean? = null) {
+        // We must not the value so we get a double negation
+        val toggleValue = value?.not() ?: switchValue.firstOrNull() ?: false
+        switchValue.emit(!toggleValue)
+        metadataHandler.setGenericValue("switchValue", !toggleValue)
+        epListHandler.setGenericValue("switchValue", !toggleValue)
+
+        val config = switchConfig.firstOrNull()
+        if (config?.cache == true && cachedSwitchResults.firstOrNull()?.size == 2) {
+            val key = config.options.getOrNull(
+                if (config.isToggled(!toggleValue)) 1 else 0
+            )
+            cachedSwitchResults.firstOrNull()?.get(key)?.second?.let {
+                _episodeList.emit(it)
+            }
+            return
+        }
+
+        if (config?.includeInfo == true) {
+            _infoResults.emit(Resource.Uninitialized())
+        }
+        _episodeList.emit(Resource.Uninitialized())
+    }
+
+    /**
+     * Wrapper for [SwitchConfig.Companion.isToggled]
+     * @see SwitchConfig.Companion.isToggled
+     */
+    private fun SwitchConfig.isToggled(
+        value: Boolean? = null, config: SwitchConfig? = null
+    ): Boolean {
+        return runBlocking {
+            SwitchConfig.isToggled(
+                value ?: switchValue.firstOrNull() ?: return@runBlocking false,
+                config ?: switchConfig.firstOrNull() ?: return@runBlocking false
+            )
         }
     }
 
