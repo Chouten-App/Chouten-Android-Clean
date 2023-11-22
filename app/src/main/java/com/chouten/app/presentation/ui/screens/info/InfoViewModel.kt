@@ -78,6 +78,30 @@ data class InfoResult(
     ) : Parcelable
 }
 
+/**
+ * @param options The (2) options to be displayed in the switch
+ * @param default The index of the default option (0 or 1)
+ * @param cache Whether or not the webview should cache the result
+ * @param includeInfo Whether or not the webview should redo the info request
+ */
+@Serializable
+data class SwitchConfig(
+    val options: Array<String>, val default: Int, val cache: Boolean, val includeInfo: Boolean
+) {
+    companion object {
+        /**
+         * Whether or not the switch is toggled
+         * If the default is 1 and the toggle is "on", the switch is NOT toggled.
+         * If the default is 0 and the toggle is "off", the switch is NOT toggled.
+         * @param value The value of the switch
+         * @param config The config of the switch
+         * @return Whether or not the switch is toggled from it's default state
+         */
+        fun isToggled(value: Boolean, config: SwitchConfig): Boolean {
+            return value.xor((config.default == 0))
+        }
+    }
+}
 
 @HiltViewModel
 class InfoViewModel @Inject constructor(

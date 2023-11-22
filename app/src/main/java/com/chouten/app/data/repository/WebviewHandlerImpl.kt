@@ -12,6 +12,7 @@ import com.chouten.app.R
 import com.chouten.app.domain.model.Payloads_V2.Action_V2
 import com.chouten.app.domain.repository.WebviewHandler
 import com.chouten.app.domain.repository.postWebMessage
+import com.chouten.app.presentation.ui.screens.info.SwitchConfig
 import com.lagradost.nicehttp.Requests
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -38,6 +39,8 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     private lateinit var webview: WebView
     private lateinit var commonCode: String
 
+    private lateinit var switchConfig: SwitchConfig
+    private var isSwitchToggled = false
 
     @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
@@ -250,6 +253,46 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
                 )
                 callback(error)
             }
+        }
+    }
+
+    @JavascriptInterface
+    fun getSwitchValue(): Int {
+        if (!::switchConfig.isInitialized) {
+            return 0
+        }
+        // If the toggle is switched (1) but the default value is also 1,
+        // we want to return 0 instead
+        return if (isSwitchToggled xor (switchConfig.default == 0)) 1 else 0
+    }
+
+    override fun <T> getGenericValue(key: String): T? {
+        return when (key) {
+            "switchConfig" -> {
+                if (::switchConfig.isInitialized) {
+                    switchConfig as? T
+                } else null
+            }
+
+            "switchValue" -> {
+                return SwitchConfig.isToggled(isSwitchToggled, switchConfig) as T?
+            }
+
+            else -> throw IllegalArgumentException("Invalid key $key")
+        }
+    }
+
+    override fun <T> setGenericValue(key: String, value: T) {
+        when (key) {
+            "switchConfig" -> {
+                switchConfig = value as SwitchConfig
+            }
+
+            "switchValue" -> {
+                isSwitchToggled = (value as Boolean) xor (switchConfig.default == 0)
+            }
+
+            else -> throw IllegalArgumentException("Invalid key $key")
         }
     }
 
