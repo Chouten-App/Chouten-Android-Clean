@@ -7,6 +7,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.chouten.app.BuildConfig
 import com.chouten.app.R
 import com.chouten.app.domain.model.Payloads_V2.Action_V2
 import com.chouten.app.domain.repository.WebviewHandler
@@ -57,7 +58,7 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
             webview.settings.javaScriptEnabled = true
             webview.settings.domStorageEnabled = true
             webview.addJavascriptInterface(this, "Native")
-            WebView.setWebContentsDebuggingEnabled(true)
+            WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         }
         if (!::commonCode.isInitialized) {
             commonCode = getCommonCode(context)
