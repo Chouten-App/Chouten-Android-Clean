@@ -20,27 +20,23 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-        # Here we need to decode keystore.jks from base64 string and place it
-        # in the folder specified in the release signing configuration
-      # - name: Decode Keystore
-      #   id: decode_keystore
-      #   uses: timheuer/base64-to-file@v1.2
-      #   with:
-      #     fileName: 'android_keystore.jks'
-      #     fileDir: '/home/runner/work/Chouten-Android/Chouten-Android/app/keystore/'
-      #     encodedString: ${{ secrets.KEYSTORE }}
 
       - name: Add Properties to local.properties
         run: |
           echo ${{ secrets.DISCORD_BUG_WEBHOOK_EXTRA }} >> local.properties
+          echo "store_password = ${{ secrets.SIGNING_STORE_PASSWORD }}" >> local.properties
+          echo "key_alias = ${{ secrets.SIGNING_KEY_ALIAS }}" >> local.properties
+          echo "key_password = ${{ secrets.SIGNING_KEY_PASSWORD }}" >> local.properties
+        
+        # Here we need to decode keystore.jks from base64 string and place it
+        # in the folder specified in the release signing configuration
+      - name: Decode Keystore
+        run: |
+          echo ${{ secrets.KEYSTORE }} | base64 -d > app/keystore/android_keystore.jks
 
       # Build and sign APK ("-x test" argument is used to skip tests)
       - name: Build APK
         run: ./gradlew :app:assembleDebug -x test
-        #env:
-        #  SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-        #  SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        #  SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
 
       # Show information about the APK's signing certificates
       #- name: Verify Signature
