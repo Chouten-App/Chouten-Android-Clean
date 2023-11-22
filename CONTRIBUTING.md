@@ -6,7 +6,7 @@ If you still feel up to the task, please, continue reading.
 Want to actually speak with someone? Come speak with us on our [Discord Server](https://discord.gg/invite/eQFZasBs)
 <br>
 <br>
-[<img src="https://invidget.switchblade.xyz/eQFZasBs" float="left" />](https://discord.gg/invite/eQFZasBs)
+[<img src="https://invidget.switchblade.xyz/FAkzq5p35C" float="left" />](https://discord.gg/FAkzq5p35C)
 
 **Table Of Contents:**
 1. [Working with the App](#working-with-the-app)
