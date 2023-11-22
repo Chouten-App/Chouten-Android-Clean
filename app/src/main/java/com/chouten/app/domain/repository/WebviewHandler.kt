@@ -73,6 +73,9 @@ interface WebviewHandler<Action : Enum<Action>, ResultPayload : WebviewHandler.C
      */
     suspend fun getCommonCode(context: Context): String
 
+    fun <T> getGenericValue(key: String): T?
+    fun <T> setGenericValue(key: String, value: T)
+
     companion object {
 
         /**
