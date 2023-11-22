@@ -25,12 +25,6 @@ android {
             keyAlias = properties.getProperty("key_alias")
             keyPassword = properties.getProperty("key_password")
         }
-        create("debug") {
-            storeFile = rootProject.file("keystore/android_keystore.jks")
-            storePassword = properties.getProperty("store_password")
-            keyAlias = properties.getProperty("key_alias")
-            keyPassword = properties.getProperty("key_password")
-        }
     }
 
     buildFeatures {
@@ -61,6 +55,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            signingConfig = signingConfigs.getByName("release")
         }
 
         release {
@@ -77,6 +73,8 @@ android {
             lint {
                 baseline = file("lint.xml")
             }
+
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     java {
