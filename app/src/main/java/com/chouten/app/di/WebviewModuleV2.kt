@@ -4,6 +4,7 @@ import com.chouten.app.data.repository.WebviewHandlerImpl
 import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.repository.WebviewHandler
 import com.chouten.app.presentation.ui.screens.info.InfoResult
+import com.chouten.app.presentation.ui.screens.info.SwitchConfig
 import com.chouten.app.presentation.ui.screens.search.SearchResult
 import com.chouten.app.presentation.ui.screens.watch.WatchResult
 import com.lagradost.nicehttp.Requests
@@ -25,6 +26,19 @@ object WebviewModuleV2 {
     fun provideSearchWebviewHandler(client: Requests): WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<SearchResult>>> {
         return WebviewHandlerImpl(client) { action, result: String ->
             Payloads_V2.GenericPayload(action, Json.decodeFromString(result))
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Provides
+    fun provideSwitchConfigWebviewHandler(client: Requests): WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<SwitchConfig>> {
+        val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            explicitNulls = false
+        }
+        return WebviewHandlerImpl(client) { action, result: String ->
+            Payloads_V2.GenericPayload(action, json.decodeFromString(result))
         }
     }
 
