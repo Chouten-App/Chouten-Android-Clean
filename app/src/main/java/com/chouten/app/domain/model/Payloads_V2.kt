@@ -32,6 +32,9 @@ object Payloads_V2 {
         @SerialName("info")
         GET_INFO,
 
+        @SerialName("switchConfig")
+        GET_SWITCH_CONFIG,
+
         @SerialName("metadata")
         GET_METADATA,
 
