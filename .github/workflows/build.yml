@@ -32,6 +32,8 @@ jobs:
         # in the folder specified in the release signing configuration
       - name: Decode Keystore
         run: |
+          mkdir -p app/keystore
+          touch app/keystore/android_keystore.jks
           echo ${{ secrets.KEYSTORE }} | base64 -d > app/keystore/android_keystore.jks
 
       # Build and sign APK ("-x test" argument is used to skip tests)
