@@ -17,7 +17,13 @@ window.onmessage = async function (event) {
                 await getEpList(payload);
             }else if(payload.action === "video"){
                 await getSource(payload);
-            }else{
+            } else if (payload.action == "switchConfig") {
+                let config = getSwitchConfig()
+                Native.sendResult(JSON.stringify({
+                    action: "switchConfig",
+                    result: config
+                }))
+            } else{
                 await logic(payload);
             }
         }catch(err){
@@ -63,6 +69,10 @@ function sendSignal(signal, message = ""){
         action: signal === 0 ? "exit" : "error",
         result: message
     }));
+}
+
+function getSwitchValue() {
+    return Native.getSwitchValue();
 }
 
 function loadScript(url){
