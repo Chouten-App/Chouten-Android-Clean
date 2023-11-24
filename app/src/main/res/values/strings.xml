@@ -56,4 +56,8 @@
     <string name="general_preference_description">Change General App Settings</string>
     <string name="duplicate_module_id">Duplicate module ID: %1$s</string>
     <string name="duplicated_module_id">Duplicated Module ID: %1$s</string>
+    <string name="install_module_dialog_title">Install %1$s</string>
+    <string name="module_install_dialog_description">"\n                                                    Are you sure want to install %1$s?\n                                                    We cannot guarantee the safety of this module, so install at your own risk.\n                                                "</string>
+    <string name="install">Install</string>
+    <string name="cancel">Cancel</string>
 </resources>

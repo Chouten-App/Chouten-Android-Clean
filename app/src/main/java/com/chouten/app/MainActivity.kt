@@ -3,16 +3,23 @@ package com.chouten.app
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.lifecycle.ViewModelProvider
 import com.chouten.app.common.findActivity
+import com.chouten.app.domain.model.AlertDialogModel
+import com.chouten.app.domain.use_case.module_use_cases.ModuleInstallEvent
 import com.chouten.app.presentation.ui.ChoutenApp
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
 import com.chouten.app.presentation.ui.components.common.AppState
 import com.chouten.app.presentation.ui.components.common.rememberAppState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -66,9 +73,58 @@ class MainActivity : ComponentActivity() {
             if (intent?.action in supportedActions) {
                 data?.let { uri ->
                     appState.viewModel.runAsync {
-                        appState.viewModel.installModule(
-                            uri, appState::showSnackbar
-                        )
+                        try {
+                            appState.viewModel.installModule(
+                                uri = uri
+                            ) {
+                                if (it is ModuleInstallEvent.PARSED) {
+                                    // Can the app install the module?
+                                    var hasPermission = false
+                                    // Has the user dismissed/accepted the permission?
+                                    var hasUserPermission = false
+
+                                    appState.showAlertDialog(
+                                        AlertDialogModel(
+                                            icon = Icons.Default.Warning,
+                                            title = getString(
+                                                R.string.install_module_dialog_title,
+                                                it.module.name
+                                            ),
+                                            message = getString(
+                                                R.string.module_install_dialog_description,
+                                                it.module.name
+                                            ).trimIndent(),
+                                            positiveButton = Pair(getString(R.string.install)) {
+                                                hasUserPermission = true
+                                                hasPermission = true
+                                            },
+                                            negativeButton = Pair(getString(R.string.cancel)) {
+                                                hasUserPermission = true
+                                                hasPermission = false
+                                            }
+                                        )
+                                    )
+                                    // We want to suspend until the user has accepted or declined the alert
+                                    while (!hasUserPermission) {
+                                        runBlocking {
+                                            delay(100)
+                                        }
+                                    }
+                                    !hasPermission
+                                } else false
+                            }
+                        } catch (e: InterruptedException) {
+                            Log.d("MainActivity", "User cancelled module installation")
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            appState.showSnackbar(
+                                com.chouten.app.domain.model.SnackbarModel(
+                                    message = e.message ?: "Unknown error",
+                                    actionLabel = "Dismiss",
+                                    isError = true
+                                )
+                            )
+                        }
                     }
                 }
             }

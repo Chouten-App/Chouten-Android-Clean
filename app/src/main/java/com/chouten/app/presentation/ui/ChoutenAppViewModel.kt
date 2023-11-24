@@ -13,6 +13,7 @@ import com.chouten.app.domain.proto.crashReportStore
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
+import com.chouten.app.domain.use_case.module_use_cases.ModuleInstallEvent
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -112,22 +113,17 @@ class ChoutenAppViewModel @Inject constructor(
      * Add a module to the app.
      * @param uri The content uri of the module to add.
      * expects uri to be a valid document uri.
+     * @param moduleEventHandler A lambda to handle module installation events.
+     * @see [ModuleInstallEvent]
+     * @throws IOException if the module cannot be downloaded or added (e.g duplicate/unsupported version)
+     * @throws IllegalArgumentException if the URI is invalid. Not a valid module (e.g not a zip or no metadata)
      */
-    suspend fun installModule(uri: Uri, showSnackbar: (SnackbarModel) -> Unit) {
+    suspend fun installModule(
+        uri: Uri, moduleEventHandler: (ModuleInstallEvent) -> Boolean
+    ) {
         withContext(Dispatchers.IO) {
-            try {
-                moduleUseCases.addModule(uri)
-                _modules.emit(moduleUseCases.getModuleUris())
-            } catch (e: Exception) {
-                e.printStackTrace()
-                showSnackbar(
-                    SnackbarModel(
-                        message = e.message ?: "Unknown error",
-                        actionLabel = "Dismiss",
-                        isError = true
-                    )
-                )
-            }
+            moduleUseCases.addModule(uri, moduleEventHandler)
+            _modules.emit(moduleUseCases.getModuleUris())
         }
     }
 
