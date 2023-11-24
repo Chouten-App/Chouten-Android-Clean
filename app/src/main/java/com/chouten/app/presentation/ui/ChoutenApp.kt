@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +23,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
@@ -75,6 +77,8 @@ fun ChoutenApp(
     val snackbarLambda: (SnackbarModel) -> Unit = { snackbarModel ->
         appState.showSnackbar(snackbarModel)
     }
+
+    val alert by appState.alertState.collectAsState()
 
     LaunchedEffect(filePreferences?.CHOUTEN_ROOT_DIR, filePreferences?.IS_CHOUTEN_MODULE_DIR_SET) {
         // If the module directory is set but the modules haven't been loaded yet, load them
@@ -151,6 +155,47 @@ fun ChoutenApp(
         }) { paddingValues ->
             // Provide the padding values as a CompositionLocal
             // This allows us to use them in the screens
+            alert?.let {
+                AlertDialog(onDismissRequest = {
+                    it.negativeButton?.second?.invoke()
+                    appState.coroutineScope.launch {
+                        appState.alertState.emit(null)
+                    }
+                }, icon = {
+                    if (it.icon != null) {
+                        Icon(imageVector = it.icon, contentDescription = null)
+                    }
+                },
+                    title = {
+                        Text(text = it.title)
+                    }, text = {
+                        Text(text = it.message, textAlign = TextAlign.Center)
+                    }, confirmButton = {
+                        Button(
+                            onClick = {
+                                it.positiveButton.second.invoke()
+                                appState.coroutineScope.launch {
+                                    appState.alertState.emit(null)
+                                }
+                            },
+                        ) {
+                            Text(
+                                text = it.positiveButton.first
+                            )
+                        }
+                    }, dismissButton = {
+                        if (it.negativeButton != null) {
+                            TextButton(onClick = {
+                                it.negativeButton.second.invoke()
+                                appState.coroutineScope.launch {
+                                    appState.alertState.emit(null)
+                                }
+                            }) {
+                                Text(text = it.negativeButton.first)
+                            }
+                        }
+                    })
+            }
 
 
             CompositionLocalProvider(LocalAppPadding provides paddingValues) {
