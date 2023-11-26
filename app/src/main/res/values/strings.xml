@@ -64,4 +64,5 @@
     <string name="module_auto_update">Module Auto-Update</string>
     <string name="module_autoupdate_error">Could not auto-update %1$s</string>
     <string name="module_autoupdate_start">Attempting to auto update %1$s</string>
+    <string name="no_servers_found">Whoops.. Looks like no servers were found?</string>
 </resources>
