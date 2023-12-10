@@ -18,6 +18,7 @@ import com.chouten.app.common.UiText
 import com.chouten.app.presentation.ui.screens.destinations.AppearanceViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.GeneralViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.LogViewDestination
+import com.chouten.app.presentation.ui.screens.destinations.ModuleViewDestination
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
@@ -51,6 +52,19 @@ fun MoreView(
             modifier = Modifier.clickable {
                 navigator.navigate(GeneralViewDestination)
             })
+        ListItem(
+            headlineContent = { Text("Modules") },
+            supportingContent = { Text("Manage modules & their individual configurations") },
+            trailingContent = {
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = ""
+                )
+            },
+            modifier = Modifier.clickable {
+                navigator.navigate(ModuleViewDestination)
+            }
+        )
         ListItem(headlineContent = { Text(stringResource(R.string.appearance)) },
             supportingContent = { Text(stringResource(R.string.appearance_page_description)) },
             trailingContent = {

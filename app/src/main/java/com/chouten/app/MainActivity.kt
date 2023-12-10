@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.runtime.SideEffect
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import com.chouten.app.common.compareSemVer
@@ -28,6 +27,7 @@ import com.chouten.app.presentation.ui.components.common.rememberAppState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -49,6 +49,87 @@ class MainActivity : ComponentActivity() {
         // Draw behind the navigation bar
         enableEdgeToEdge()
 
+        ViewModelProvider(this)[ChoutenAppViewModel::class.java].runAsync {
+            // We want to load each of the
+            val modules = moduleUseCases.getModuleUris()
+            moduleDatastore.data.collectLatest {
+                it.autoUpdatingModules.forEach { updatingModule ->
+                    Log.d("MainActivity", "Attempting to Update $updatingModule")
+                    withContext(Dispatchers.IO) {
+                        val module = modules.find { model ->
+                            model.id == updatingModule
+                        } ?: return@withContext
+                        val updateUrl = module.updateUrl
+
+                        try {
+                            logUseCases.insertLog(
+                                LogEntry(
+                                    entryHeader = getString(R.string.module_auto_update),
+                                    entryContent = getString(
+                                        R.string.module_autoupdate_start, module.name
+                                    )
+                                )
+                            )
+                            moduleUseCases.addModule(updateUrl.toUri()) { event ->
+                                when (event) {
+                                    is ModuleInstallEvent.PARSED -> {
+                                        (event.module.version.compareSemVer(module.version) != 1).also { res ->
+                                            if (!res) {
+                                                appState.viewModel.runAsync {
+                                                    logUseCases.insertLog(
+                                                        LogEntry(
+                                                            entryHeader = getString(R.string.module_auto_update),
+                                                            entryContent = getString(
+                                                                R.string.module_autoupdate_message,
+                                                                module.name,
+                                                                module.version,
+                                                                event.module.version
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                                appState.showSnackbar(
+                                                    SnackbarModel(
+                                                        isError = false,
+                                                        message = getString(
+                                                            R.string.module_autoupdate_message,
+                                                            module.name,
+                                                            module.version,
+                                                            event.module.version
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    else -> {
+                                        false
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            if (e is InterruptedException) return@withContext
+                            e.printStackTrace()
+                            appState.showSnackbar(
+                                SnackbarModel(
+                                    isError = true, message = getString(
+                                        R.string.module_autoupdate_error, module.name
+                                    )
+                                )
+                            )
+                            logUseCases.insertLog(
+                                LogEntry(
+                                    entryHeader = getString(R.string.module_auto_update),
+                                    entryContent = e.message ?: "Unknown Error"
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         setContent {
             val appState = rememberAppState(
                 viewModel = ViewModelProvider(this)[ChoutenAppViewModel::class.java]
@@ -56,89 +137,6 @@ class MainActivity : ComponentActivity() {
 
             if (!::appState.isInitialized) {
                 this.appState = appState
-            }
-
-            SideEffect {
-                appState.viewModel.runAsync {
-                    // We want to load each of the
-                    val modules = moduleUseCases.getModuleUris()
-                    moduleDatastore.data.collect {
-                        it.autoUpdatingModules.forEach { updatingModule ->
-                            Log.d("MainActivity", "Attempting to Update $updatingModule")
-                            withContext(Dispatchers.IO) {
-                                val module = modules.find { model ->
-                                    model.id == updatingModule
-                                } ?: return@withContext
-                                val updateUrl = module.updateUrl
-
-                                try {
-                                    logUseCases.insertLog(
-                                        LogEntry(
-                                            entryHeader = getString(R.string.module_auto_update),
-                                            entryContent = getString(
-                                                R.string.module_autoupdate_start, module.name
-                                            )
-                                        )
-                                    )
-                                    moduleUseCases.addModule(updateUrl.toUri()) { event ->
-                                        when (event) {
-                                            is ModuleInstallEvent.PARSED -> {
-                                                (event.module.version.compareSemVer(module.version) != 1).also { res ->
-                                                    if (!res) {
-                                                        appState.viewModel.runAsync {
-                                                            logUseCases.insertLog(
-                                                                LogEntry(
-                                                                    entryHeader = getString(R.string.module_auto_update),
-                                                                    entryContent = getString(
-                                                                        R.string.module_autoupdate_message,
-                                                                        module.name,
-                                                                        module.version,
-                                                                        event.module.version
-                                                                    )
-                                                                )
-                                                            )
-                                                        }
-                                                        appState.showSnackbar(
-                                                            SnackbarModel(
-                                                                isError = false,
-                                                                message = getString(
-                                                                    R.string.module_autoupdate_message,
-                                                                    module.name,
-                                                                    module.version,
-                                                                    event.module.version
-                                                                )
-                                                            )
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            else -> {
-                                                false
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    if (e is InterruptedException) return@withContext
-                                    e.printStackTrace()
-                                    appState.showSnackbar(
-                                        SnackbarModel(
-                                            isError = true, message = getString(
-                                                R.string.module_autoupdate_error, module.name
-                                            )
-                                        )
-                                    )
-                                    logUseCases.insertLog(
-                                        LogEntry(
-                                            entryHeader = getString(R.string.module_auto_update),
-                                            entryContent = e.message ?: "Unknown Error"
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             // On new intent must be manually called for the app to handle intents

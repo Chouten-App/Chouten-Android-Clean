@@ -18,14 +18,14 @@ android {
     namespace = "com.chouten.app"
     compileSdk = 34
 
-    signingConfigs {
-        create("release") {
-            storeFile = rootProject.file("app/keystore/android_keystore.jks")
-            storePassword = properties.getProperty("store_password")
-            keyAlias = properties.getProperty("key_alias")
-            keyPassword = properties.getProperty("key_password")
-        }
-    }
+//    signingConfigs {
+//        create("release") {
+//            storeFile = rootProject.file("app/keystore/android_keystore.jks")
+//            storePassword = properties.getProperty("store_password")
+//            keyAlias = properties.getProperty("key_alias")
+//            keyPassword = properties.getProperty("key_password")
+//        }
+//    }
 
     buildFeatures {
         buildConfig = true
@@ -56,7 +56,7 @@ android {
                 "proguard-rules.pro"
             )
 
-            signingConfig = signingConfigs.getByName("release")
+//            signingConfig = signingConfigs.getByName("release")
         }
 
         release {
@@ -74,7 +74,7 @@ android {
                 baseline = file("lint.xml")
             }
 
-            signingConfig = signingConfigs.getByName("release")
+//            signingConfig = signingConfigs.getByName("release")
         }
     }
     java {
@@ -107,9 +107,9 @@ dependencies {
     implementation(libs.ui)
     implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
-    implementation(libs.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.core)
+    implementation(libs.androidx.material3.android)
     ksp(libs.ksp)
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
