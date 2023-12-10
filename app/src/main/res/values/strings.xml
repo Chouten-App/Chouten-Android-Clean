@@ -60,4 +60,8 @@
     <string name="module_install_dialog_description">"\n                                                    Are you sure want to install %1$s?\n                                                    We cannot guarantee the safety of this module, so install at your own risk.\n                                                "</string>
     <string name="install">Install</string>
     <string name="cancel">Cancel</string>
+    <string name="module_autoupdate_message"><![CDATA[Updated %1$s from %2$s -> %3$s]]></string>
+    <string name="module_auto_update">Module Auto-Update</string>
+    <string name="module_autoupdate_error">Could not auto-update %1$s</string>
+    <string name="module_autoupdate_start">Attempting to auto update %1$s</string>
 </resources>
