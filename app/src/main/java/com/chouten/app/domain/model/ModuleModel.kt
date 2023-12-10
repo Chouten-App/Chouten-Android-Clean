@@ -81,6 +81,8 @@ data class ModuleModel(
          */
         val author: String,
 
+        val description: String? = null,
+
         /**
          * The icon for the module.
          * This is a bitmap encoded as a byte array.

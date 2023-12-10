@@ -27,7 +27,7 @@ import com.chouten.app.presentation.ui.components.common.rememberAppState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -50,9 +50,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         ViewModelProvider(this)[ChoutenAppViewModel::class.java].runAsync {
-            // We want to load each of the
             val modules = moduleUseCases.getModuleUris()
-            moduleDatastore.data.collectLatest {
+            moduleDatastore.data.firstOrNull()?.let {
                 it.autoUpdatingModules.forEach { updatingModule ->
                     Log.d("MainActivity", "Attempting to Update $updatingModule")
                     withContext(Dispatchers.IO) {
@@ -206,19 +205,6 @@ class MainActivity : ComponentActivity() {
                                     while (!hasUserPermission) {
                                         runBlocking {
                                             delay(100)
-                                        }
-                                    }
-                                    if (hasPermission) {
-                                        // We want to add the module to the list of auto-updating modules
-                                        // TODO: Make this configurable
-                                        appState.viewModel.runAsync {
-                                            moduleDatastore.updateData { modulePrefs ->
-                                                modulePrefs.copy(
-                                                    autoUpdatingModules = (modulePrefs.autoUpdatingModules + setOf(
-                                                        it.module.id
-                                                    )).toList()
-                                                )
-                                            }
                                         }
                                     }
                                     !hasPermission
