@@ -9,6 +9,7 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.OutOfDateAppException
 import com.chouten.app.common.OutOfDateModuleException
+import com.chouten.app.common.compareSemVer
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.repository.ModuleRepository
@@ -339,11 +340,11 @@ class AddModuleUseCase @Inject constructor(
                 // Check if the module already exists
                 if (module.id == it.second.id) {
                     val ret: Int = try {
-                        compareSemVer(module.version, it.second.version)
+                        module.version.compareSemVer(it.second.version)
                     } catch (e: IllegalArgumentException) {
                         // Find which module has the invalid version
                         try {
-                            compareSemVer("0.0.0", module.version)
+                            "0.0.0".compareSemVer(module.version)
                         } catch (e: IllegalArgumentException) {
                             // The module being installed has an invalid version
                             e.printStackTrace()
@@ -351,7 +352,7 @@ class AddModuleUseCase @Inject constructor(
                         }
 
                         try {
-                            compareSemVer("0.0.0", it.second.version)
+                            "0.0.0".compareSemVer(it.second.version)
                         } catch (e: IllegalArgumentException) {
                             e.printStackTrace()
                             // The existing module has an invalid version
@@ -417,38 +418,4 @@ class AddModuleUseCase @Inject constructor(
                 newModuleUri
             )
         }
-
-    /**
-     * Compare two semVer versions
-     * @param v1 The first version
-     * @param v2 The second version
-     * @return 1 if the first version is newer, -1 if the second version is newer, 0 if the versions are the same
-     * @throws IllegalArgumentException if the versions are invalid
-     */
-    private fun compareSemVer(v1: String, v2: String): Int {
-        // Return 1 if the first version is newer
-        // Return -1 if the second version is newer
-        // Return 0 if the versions are the same
-        val v1Split = v1.split(".")
-        val v2Split = v2.split(".")
-        if (v1Split.size != 3 || v2Split.size != 3) {
-            throw IllegalArgumentException("Invalid version")
-        }
-
-        return if (v1Split[0].toInt() > v2Split[0].toInt()) {
-            1
-        } else if (v1Split[0].toInt() < v2Split[0].toInt()) {
-            -1
-        } else if (v1Split[1].toInt() > v2Split[1].toInt()) {
-            1
-        } else if (v1Split[1].toInt() < v2Split[1].toInt()) {
-            -1
-        } else if (v1Split[2].toInt() > v2Split[2].toInt()) {
-            1
-        } else if (v1Split[2].toInt() < v2Split[2].toInt()) {
-            -1
-        } else {
-            0
-        }
-    }
 }
