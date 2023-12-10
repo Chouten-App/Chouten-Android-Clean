@@ -198,3 +198,36 @@ internal fun scale(
  */
 fun calculateFraction(start: Float, end: Float, pos: Float) =
     (if (end - start == 0f) 0f else (pos - start) / (end - start)).coerceIn(0f, 1f)
+
+/**
+ * Compare two semVer versions
+ * @param v2 The second version
+ * @return 1 if the first version is newer, -1 if the second version is newer, 0 if the versions are the same
+ * @throws IllegalArgumentException if the versions are invalid
+ */
+fun String.compareSemVer(v2: String): Int {
+    // Return 1 if the first version is newer
+    // Return -1 if the second version is newer
+    // Return 0 if the versions are the same
+    val v1Split = split(".")
+    val v2Split = v2.split(".")
+    if (v1Split.size != 3 || v2Split.size != 3) {
+        throw IllegalArgumentException("Invalid version")
+    }
+
+    return if (v1Split[0].toInt() > v2Split[0].toInt()) {
+        1
+    } else if (v1Split[0].toInt() < v2Split[0].toInt()) {
+        -1
+    } else if (v1Split[1].toInt() > v2Split[1].toInt()) {
+        1
+    } else if (v1Split[1].toInt() < v2Split[1].toInt()) {
+        -1
+    } else if (v1Split[2].toInt() > v2Split[2].toInt()) {
+        1
+    } else if (v1Split[2].toInt() < v2Split[2].toInt()) {
+        -1
+    } else {
+        0
+    }
+}
