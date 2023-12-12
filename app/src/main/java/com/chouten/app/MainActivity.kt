@@ -12,11 +12,11 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.SideEffect
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
-import com.chouten.app.common.compareSemVer
 import com.chouten.app.common.findActivity
 import com.chouten.app.domain.model.AlertDialogModel
 import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.SnackbarModel
+import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleInstallEvent
@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                                     moduleUseCases.addModule(updateUrl.toUri()) { event ->
                                         when (event) {
                                             is ModuleInstallEvent.PARSED -> {
-                                                (event.module.version.compareSemVer(module.version) != 1).also { res ->
+                                                (Version(event.module.version) < Version(module.version)).also { res ->
                                                     if (!res) {
                                                         appState.viewModel.runAsync {
                                                             logUseCases.insertLog(

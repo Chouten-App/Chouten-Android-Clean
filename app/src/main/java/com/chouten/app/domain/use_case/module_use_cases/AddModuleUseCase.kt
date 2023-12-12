@@ -9,8 +9,8 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.OutOfDateAppException
 import com.chouten.app.common.OutOfDateModuleException
-import com.chouten.app.common.compareSemVer
 import com.chouten.app.domain.model.ModuleModel
+import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.repository.ModuleRepository
 import com.lagradost.nicehttp.Requests
@@ -339,57 +339,41 @@ class AddModuleUseCase @Inject constructor(
                 log("Comparing module ${module.id} (${module.version}) with ${it.second.id} (${it.second.version})")
                 // Check if the module already exists
                 if (module.id == it.second.id) {
-                    val ret: Int = try {
-                        module.version.compareSemVer(it.second.version)
+                    val oldModuleVersion: Version = try {
+                        Version(module.version)
                     } catch (e: IllegalArgumentException) {
-                        // Find which module has the invalid version
-                        try {
-                            "0.0.0".compareSemVer(module.version)
-                        } catch (e: IllegalArgumentException) {
-                            // The module being installed has an invalid version
-                            e.printStackTrace()
-                            safeException(e, newModuleUri)
-                        }
-
-                        try {
-                            "0.0.0".compareSemVer(it.second.version)
-                        } catch (e: IllegalArgumentException) {
-                            e.printStackTrace()
-                            // The existing module has an invalid version
-                            // We can make a note of it and let the module be installed
-                            log("Module ${it.second.name} (${it.second.id}) has an invalid version (${it.second.version})")
-                            1
-                        }
+                        e.printStackTrace()
+                        safeException(e, newModuleUri)
+                    }
+                    val newModuleVersion: Version = try {
+                        Version(it.second.version)
+                    } catch (e: IllegalArgumentException) {
+                        e.printStackTrace()
+                        // The new module has an invalid version
+                        log("Module ${it.second.name} (${it.second.id}) has an invalid version (${it.second.version})")
+                        safeException(e, newModuleUri)
                     }
 
-                    when (ret) {
-                        // Module being installed is newer than the existing module
-                        1 -> {
-                            // Delete the old module
-                            if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
-                                safeException(
-                                    IOException("Could not delete module ${it.second.name} (${it.second.id})"),
-                                    newModuleUri
-                                )
-                            }
-                            log("Updated module ${module.name} (${module.id})")
-                        }
-
-                        // Module being installed is the same version as the existing module
-                        0 -> {
+                    if (oldModuleVersion < newModuleVersion) {
+                        // Delete the old module
+                        if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
                             safeException(
-                                IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
+                                IOException("Could not delete module ${it.second.name} (${it.second.id})"),
                                 newModuleUri
                             )
                         }
-
-                        // Module being installed is older than the existing module
-                        else -> {
-                            safeException(
-                                IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
-                                newModuleUri
-                            )
-                        }
+                        log("Updated module ${module.name} (${module.id})")
+                    }
+                    if (oldModuleVersion == newModuleVersion) {
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
+                            newModuleUri
+                        )
+                    } else if (oldModuleVersion > newModuleVersion){
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
+                            newModuleUri
+                        )
                     }
                 }
             }
