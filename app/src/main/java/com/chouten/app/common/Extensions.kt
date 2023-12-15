@@ -208,6 +208,4 @@ fun calculateFraction(start: Float, end: Float, pos: Float) =
  * @return The parsed [Version] object.
  * @throws IllegalArgumentException If the version string is not valid.
  */
-fun String.toVersion(useRegex: Boolean = false): Version {
-    return Version(this, useRegex)
-}
+fun String.toVersion(useRegex: Boolean = false) = Version(this, useRegex)
