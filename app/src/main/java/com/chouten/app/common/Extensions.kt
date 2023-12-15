@@ -12,6 +12,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.domain.proto.appearanceDatastore
 import kotlinx.coroutines.flow.firstOrNull
@@ -198,3 +199,15 @@ internal fun scale(
  */
 fun calculateFraction(start: Float, end: Float, pos: Float) =
     (if (end - start == 0f) 0f else (pos - start) / (end - start)).coerceIn(0f, 1f)
+
+/**
+ * Parses a version string into a [Version] object.
+ *
+ * @param useRegex Flag to determine whether to use regex for parsing.
+ *          Not using regex is stricter and will throw an exception for more invalid strings.
+ * @return The parsed [Version] object.
+ * @throws IllegalArgumentException If the version string is not valid.
+ */
+fun String.toVersion(useRegex: Boolean = false): Version {
+    return Version(this, useRegex)
+}
