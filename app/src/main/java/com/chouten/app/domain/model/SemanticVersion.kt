@@ -101,10 +101,50 @@ data class Version(
         if (this.preRelease != other.preRelease) {
             if (this.preRelease.isEmpty()) return 1
             if (other.preRelease.isEmpty()) return -1
-            return this.preRelease.compareTo(other.preRelease)
+            // Split preRelease strings and compare them part by part.
+            val thisPreReleaseParts = this.preRelease.split(".")
+            val otherPreReleaseParts = other.preRelease.split(".")
+            val maxIndex = minOf(thisPreReleaseParts.size, otherPreReleaseParts.size)
+            for (i in 0 until maxIndex) {
+                val cmp = thisPreReleaseParts[i].compareTo(otherPreReleaseParts[i])
+                if (cmp != 0) return cmp
+            }
+            return thisPreReleaseParts.size - otherPreReleaseParts.size
         }
         // Note: Build metadata does not affect version precedence
         return 0
+    }
+
+    /**
+     * Checks if this version is equal to the specified version.
+     *
+     * @param other The [Version] to compare.
+     * @return `true` if the versions are equal, `false` otherwise.
+     */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Version
+
+        if (major != other.major) return false
+        if (minor != other.minor) return false
+        if (patch != other.patch) return false
+        if (preRelease != other.preRelease) return false
+
+        return true
+    }
+
+    /**
+     * @return a hash code value for the version.
+     */
+    override fun hashCode(): Int {
+        var result = major
+        result = 31 * result + minor
+        result = 31 * result + patch
+        result = 31 * result + preRelease.hashCode()
+        result = 31 * result + buildMetadata.hashCode()
+        return result
     }
 
     /**
