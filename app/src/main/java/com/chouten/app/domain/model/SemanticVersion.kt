@@ -1,5 +1,29 @@
 package com.chouten.app.domain.model
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+/**
+ * Serializer for [Version].
+ */
+object VersionAsStringSerializer : KSerializer<Version> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Version", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Version) {
+        return encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): Version {
+        return Version(decoder.decodeString())
+    }
+}
+
 /**
  * Represents a semantic version number.
  *
@@ -9,6 +33,7 @@ package com.chouten.app.domain.model
  * @property preRelease The pre-release identifier.
  * @property buildMetadata The build metadata.
  */
+@Serializable(with = VersionAsStringSerializer::class)
 data class Version(
     var major: Int,
     var minor: Int,

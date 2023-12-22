@@ -47,7 +47,7 @@ data class ModuleModel(
      * The version of the module.
      * This is used to identify the module in the app.
      */
-    val version: String,
+    val version: Version,
 
     /**
      * The format version for the code of the module.
