@@ -12,6 +12,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.domain.proto.appearanceDatastore
 import kotlinx.coroutines.flow.firstOrNull
@@ -200,34 +201,11 @@ fun calculateFraction(start: Float, end: Float, pos: Float) =
     (if (end - start == 0f) 0f else (pos - start) / (end - start)).coerceIn(0f, 1f)
 
 /**
- * Compare two semVer versions
- * @param v2 The second version
- * @return 1 if the first version is newer, -1 if the second version is newer, 0 if the versions are the same
- * @throws IllegalArgumentException if the versions are invalid
+ * Parses a version string into a [Version] object.
+ *
+ * @param useRegex Flag to determine whether to use regex for parsing.
+ *          Not using regex is stricter and will throw an exception for more invalid strings.
+ * @return The parsed [Version] object.
+ * @throws IllegalArgumentException If the version string is not valid.
  */
-fun String.compareSemVer(v2: String): Int {
-    // Return 1 if the first version is newer
-    // Return -1 if the second version is newer
-    // Return 0 if the versions are the same
-    val v1Split = split(".")
-    val v2Split = v2.split(".")
-    if (v1Split.size != 3 || v2Split.size != 3) {
-        throw IllegalArgumentException("Invalid version")
-    }
-
-    return if (v1Split[0].toInt() > v2Split[0].toInt()) {
-        1
-    } else if (v1Split[0].toInt() < v2Split[0].toInt()) {
-        -1
-    } else if (v1Split[1].toInt() > v2Split[1].toInt()) {
-        1
-    } else if (v1Split[1].toInt() < v2Split[1].toInt()) {
-        -1
-    } else if (v1Split[2].toInt() > v2Split[2].toInt()) {
-        1
-    } else if (v1Split[2].toInt() < v2Split[2].toInt()) {
-        -1
-    } else {
-        0
-    }
-}
+fun String.toVersion(useRegex: Boolean = false) = Version(this, useRegex)

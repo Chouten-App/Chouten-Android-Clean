@@ -9,7 +9,6 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.OutOfDateAppException
 import com.chouten.app.common.OutOfDateModuleException
-import com.chouten.app.common.compareSemVer
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.repository.ModuleRepository
@@ -216,17 +215,25 @@ class AddModuleUseCase @Inject constructor(
             /**
              * The parsed module
              */
-            val module = metadataInputStream.use {
-                val stringBuffer = StringBuffer()
-                it.bufferedReader().use { reader ->
-                    var line = reader.readLine()
-                    while (line != null) {
-                        stringBuffer.append(line)
-                        line = reader.readLine()
+            val module = try {
+                metadataInputStream.use {
+                    val stringBuffer = StringBuffer()
+                    it.bufferedReader().use { reader ->
+                        var line = reader.readLine()
+                        while (line != null) {
+                            stringBuffer.append(line)
+                            line = reader.readLine()
+                        }
                     }
-                }
 
-                jsonParser(stringBuffer.toString())
+                    jsonParser(stringBuffer.toString())
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                safeException(
+                    IllegalArgumentException("Could not parse module", e),
+                    newModuleUri
+                )
             }
 
             if (callback(ModuleInstallEvent.PARSED(module))) {
@@ -338,58 +345,28 @@ class AddModuleUseCase @Inject constructor(
             metadataUriPairs.forEach {
                 log("Comparing module ${module.id} (${module.version}) with ${it.second.id} (${it.second.version})")
                 // Check if the module already exists
+                // TODO: check how the error is handled if the module version is invalid, this was previously done here, now idk
                 if (module.id == it.second.id) {
-                    val ret: Int = try {
-                        module.version.compareSemVer(it.second.version)
-                    } catch (e: IllegalArgumentException) {
-                        // Find which module has the invalid version
-                        try {
-                            "0.0.0".compareSemVer(module.version)
-                        } catch (e: IllegalArgumentException) {
-                            // The module being installed has an invalid version
-                            e.printStackTrace()
-                            safeException(e, newModuleUri)
+                    if (module.version < it.second.version) { // old module version < new module version
+                        // Delete the old module
+                        if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
+                            safeException(
+                                IOException("Could not delete module ${it.second.name} (${it.second.id})"),
+                                newModuleUri
+                            )
                         }
-
-                        try {
-                            "0.0.0".compareSemVer(it.second.version)
-                        } catch (e: IllegalArgumentException) {
-                            e.printStackTrace()
-                            // The existing module has an invalid version
-                            // We can make a note of it and let the module be installed
-                            log("Module ${it.second.name} (${it.second.id}) has an invalid version (${it.second.version})")
-                            1
-                        }
+                        log("Updated module ${module.name} (${module.id})")
                     }
-
-                    when (ret) {
-                        // Module being installed is newer than the existing module
-                        1 -> {
-                            // Delete the old module
-                            if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
-                                safeException(
-                                    IOException("Could not delete module ${it.second.name} (${it.second.id})"),
-                                    newModuleUri
-                                )
-                            }
-                            log("Updated module ${module.name} (${module.id})")
-                        }
-
-                        // Module being installed is the same version as the existing module
-                        0 -> {
-                            safeException(
-                                IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
-                                newModuleUri
-                            )
-                        }
-
-                        // Module being installed is older than the existing module
-                        else -> {
-                            safeException(
-                                IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
-                                newModuleUri
-                            )
-                        }
+                    if (module.version == it.second.version) { // old module version == new module version
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
+                            newModuleUri
+                        )
+                    } else if (module.version > it.second.version) { // old module version > new module version
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
+                            newModuleUri
+                        )
                     }
                 }
             }
