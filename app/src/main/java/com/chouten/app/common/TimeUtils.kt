@@ -9,9 +9,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Converts epoch seconds to a formatted time string.
+ * Converts epoch milliseconds to a formatted time string.
  *
- * @param epochMilli The epoch time in seconds.
+ * @param epochMilli The epoch time in milliseconds.
  * @param pattern The desired pattern for formatting the time (default is "h:mm:ss").
  * @return The formatted time string of [epochMilli] in the pattern of [pattern].
  */

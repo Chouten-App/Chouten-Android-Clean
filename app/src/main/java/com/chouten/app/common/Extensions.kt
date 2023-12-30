@@ -138,7 +138,7 @@ fun Long.formatMinSec(): String {
     return if (this <= 0L) {
         "00:00"
     } else {
-        // Format HH:MM::SS or MM:SS if hours is 0
+        // Format HH:MM:SS or MM:SS if hours is 0
         if (TimeUnit.MILLISECONDS.toHours(this) > 0) {
             String.format(
                 "%02d:%02d:%02d",
