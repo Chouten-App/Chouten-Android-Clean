@@ -31,6 +31,7 @@ class ModuleRepositoryImpl @Inject constructor(
     override suspend fun getModuleDirs(): List<Uri> {
 
         val preferences = context.filepathDatastore.data.first()
+        if (preferences.CHOUTEN_ROOT_DIR == Uri.EMPTY) return emptyList()
         val contentResolver = context.contentResolver
 
         return withContext(Dispatchers.IO) {

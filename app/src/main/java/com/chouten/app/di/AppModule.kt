@@ -124,9 +124,13 @@ object AppModule {
     @Provides
     fun provideModuleRepository(app: Application, httpClient: Requests): ModuleRepository {
         val moduleDirGetter: suspend (Uri) -> Uri = { uri: Uri ->
-            GetModuleDirUseCase(
-                app.applicationContext
-            )(uri)
+            try {
+                GetModuleDirUseCase(
+                    app.applicationContext
+                )(uri)
+            } catch (e: Exception) {
+                Uri.EMPTY
+            }
         }
         return ModuleRepositoryImpl(app.applicationContext, moduleDirGetter)
     }
