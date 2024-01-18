@@ -29,3 +29,14 @@ fun epochMillisToTime(epochMilli: Long, pattern: String = "HH:mm:ss"): String {
         }.format(Date(epochMilli))
     }
 }
+
+/**
+ * Converts epoch milliseconds to a formatted time string.
+ *
+ * @param epochMilli The epoch time in milliseconds.
+ * @param pattern The desired pattern for formatting the time (default is "h:mm:ss").
+ * @return The formatted time string of [epochMilli] in the pattern of [pattern].
+ */
+fun Long.toTimeString(pattern: String = "HH:mm:ss"): String {
+    return epochMillisToTime(this, pattern)
+}
