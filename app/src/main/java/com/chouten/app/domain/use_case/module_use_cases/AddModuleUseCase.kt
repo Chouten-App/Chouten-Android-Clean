@@ -347,22 +347,22 @@ class AddModuleUseCase @Inject constructor(
                 // Check if the module already exists
                 // TODO: check how the error is handled if the module version is invalid, this was previously done here, now idk
                 if (module.id == it.second.id) {
-                    if (module.version < it.second.version) { // old module version < new module version
+                    if (module.version > it.second.version) { // new module version > old module version
                         // Delete the old module
                         if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
                             safeException(
                                 IOException("Could not delete module ${it.second.name} (${it.second.id})"),
-                                newModuleUri
+                                it.first
                             )
                         }
                         log("Updated module ${module.name} (${module.id})")
                     }
-                    if (module.version == it.second.version) { // old module version == new module version
+                    if (module.version == it.second.version) { // new module version == old module version
                         safeException(
                             IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
                             newModuleUri
                         )
-                    } else if (module.version > it.second.version) { // old module version > new module version
+                    } else if (module.version < it.second.version) { // new module version < old module version
                         safeException(
                             IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
                             newModuleUri
