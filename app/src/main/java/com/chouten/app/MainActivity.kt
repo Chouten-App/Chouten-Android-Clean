@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                                     moduleUseCases.addModule(updateUrl.toUri()) { event ->
                                         when (event) {
                                             is ModuleInstallEvent.PARSED -> {
-                                                (event.module.version < module.version).also { res ->
+                                                (event.module.version <= module.version).also { res ->
                                                     if (!res) {
                                                         appState.viewModel.runAsync {
                                                             logUseCases.insertLog(
