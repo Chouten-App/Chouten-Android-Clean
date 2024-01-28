@@ -14,9 +14,10 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import com.chouten.app.common.findActivity
 import com.chouten.app.domain.model.AlertDialogModel
+import com.chouten.app.domain.model.DiscordRPCGatewayEvent
+import com.chouten.app.domain.model.DiscordRPCGatewayInitialHelloData
 import com.chouten.app.domain.model.LogEntry
 import com.chouten.app.domain.model.SnackbarModel
-import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.moduleDatastore
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleInstallEvent
@@ -30,7 +31,58 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import javax.inject.Inject
+import kotlin.properties.Delegates
+
+
+class DiscordRPCListener : WebSocketListener() {
+
+    var heartbeatDelay by Delegates.notNull<Int>()
+
+    init {
+        val client = OkHttpClient()
+        client.newWebSocket(
+            Request.Builder().url("wss://gateway.discord.gg/?v=10&encoding=json").build(), this
+        )
+    }
+
+    override fun onOpen(webSocket: WebSocket, response: Response) {
+        super.onOpen(webSocket, response)
+//        Log.d("DiscordRPC", "We have opened a websocket")
+    }
+
+    override fun onMessage(webSocket: WebSocket, text: String) {
+        super.onMessage(webSocket, text)
+        val json = Json {
+            explicitNulls = false
+            encodeDefaults = true
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+//        Log.d("DiscordRPC", "We have recieved ${text}")
+        try {
+            val code = json.decodeFromString<DiscordRPCGatewayEvent>(text)
+            Log.d("DiscordRPC", "Recieved Operation: ${code}")
+//            when (parsed.opCode) {
+//                is DiscordRPCGatewayEvent.DiscordRPCGatewayOpCode.INTIIAL_HELLO -> {
+//                    heartbeatDelay = parsed.opCode.eventData.heartbeatInterval
+//                    Log.d("DiscordRPC", "Set Heartbeat Delay to $heartbeatDelay")
+//                }
+//
+//                else -> {}
+//            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -45,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        DiscordRPCListener()
         // Draw behind the navigation bar
         enableEdgeToEdge()
 
@@ -184,11 +236,9 @@ class MainActivity : ComponentActivity() {
                                     var hasUserPermission = false
 
                                     appState.showAlertDialog(
-                                        AlertDialogModel(
-                                            icon = Icons.Default.Warning,
+                                        AlertDialogModel(icon = Icons.Default.Warning,
                                             title = getString(
-                                                R.string.install_module_dialog_title,
-                                                it.module.name
+                                                R.string.install_module_dialog_title, it.module.name
                                             ),
                                             message = getString(
                                                 R.string.module_install_dialog_description,
@@ -201,8 +251,7 @@ class MainActivity : ComponentActivity() {
                                             negativeButton = Pair(getString(R.string.cancel)) {
                                                 hasUserPermission = true
                                                 hasPermission = false
-                                            }
-                                        )
+                                            })
                                     )
                                     // We want to suspend until the user has accepted or declined the alert
                                     while (!hasUserPermission) {
