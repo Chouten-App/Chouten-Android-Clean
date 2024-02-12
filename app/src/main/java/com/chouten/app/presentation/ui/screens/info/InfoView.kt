@@ -126,14 +126,14 @@ fun InfoView(
                 selectedSeason?.let {
                     if ((lastUrl != it.url) && (infoViewModel.getMediaList().find { media ->
                             media.title == it.name
-                        } == null)
-                    ) {
+                        } == null)) {
                         infoViewModel.getInfo(title, it.url)
                         lastUrl = it.url
                     } else {
                         // Make sure that we don't reload the episodes if we already have them
-                        if (episodeList is Resource.Uninitialized)
-                            infoViewModel.getEpisodes(urls, 0)
+                        if (episodeList is Resource.Uninitialized) infoViewModel.getEpisodes(
+                            urls, 0
+                        )
                     }
                 } ?: infoViewModel.getEpisodes(urls, 0)
             }
@@ -418,12 +418,11 @@ fun InfoView(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     infoResults.data?.seasons?.forEach { season ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    season.name
-                                                )
-                                            },
+                                        DropdownMenuItem(text = {
+                                            Text(
+                                                season.name
+                                            )
+                                        },
                                             onClick = {
                                                 isSeasonDropdown = false
                                                 // reload the viewmodel with the new data

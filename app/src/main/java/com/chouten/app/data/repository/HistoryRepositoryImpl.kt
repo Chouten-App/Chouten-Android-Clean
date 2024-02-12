@@ -16,7 +16,7 @@ class HistoryRepositoryImpl(
         return dao.getHistoryByUrl(url)
     }
 
-    override suspend fun getHistoryByPKey(url: String, index: Int) = dao.getHistoryByPKey(url, index)
+    override suspend fun getHistoryByPKey(id: String, url: String, index: Int) = dao.getHistoryByPKey(id, url, index)
 
     override suspend fun insertHistoryEntry(historyEntry: HistoryEntry) {
         return dao.insertHistoryEntry(historyEntry)

@@ -240,10 +240,21 @@ class ExoplayerActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             val moduleData = applicationContext.moduleDatastore.data.firstOrNull()
-            moduleUseCases.getModuleUris().find { it.id == moduleData?.selectedModuleId }
-                ?.let {
-                    selectedModule.emit(it)
+            moduleUseCases.getModuleUris().find { it.id == moduleData?.selectedModuleId }?.let {
+                selectedModule.emit(it)
+                withContext(Dispatchers.IO) {
+                    historyUseCases.getHistoryByPKey(
+                        it.id, watchBundle.infoUrl, watchBundle.selectedMediaIndex
+                    )?.let { entry ->
+                        startTime =
+                            if (entry.entryProgress > 0) (entry.entryDuration / 100) * entry.entryProgress else 0.0
+                    } ?: run {
+                        historyUseCases.insertHistory(
+                            buildHistoryEntry(id = it.id, playbackPosition = 0, duration = 0)
+                        )
+                    }
                 }
+            }
         }
 
         // Loop through the headers of the source and use them within the DataSource
@@ -309,21 +320,6 @@ class ExoplayerActivity : ComponentActivity() {
 
         if (!isInitialized) buildPlayer()
 
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                historyUseCases.getHistoryByPKey(
-                    watchBundle.infoUrl, watchBundle.selectedMediaIndex
-                )?.let {
-                    startTime =
-                        if (it.entryProgress > 0) (it.entryDuration / 100) * it.entryProgress else 0.0
-                } ?: run {
-                    historyUseCases.insertHistory(
-                        buildHistoryEntry(playbackPosition = 0, duration = 0)
-                    )
-                }
-            }
-        }
-
         setContent {
             ChoutenTheme {
                 var showPlayerUI by rememberSaveable { mutableStateOf(false) }
@@ -360,7 +356,8 @@ class ExoplayerActivity : ComponentActivity() {
                     "Skip Button Padding"
                 )
 
-                Scaffold(modifier = Modifier.fillMaxSize(),
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(snackbarHost) }) { it ->
                     Box(
                         modifier = Modifier
@@ -431,8 +428,7 @@ class ExoplayerActivity : ComponentActivity() {
                             duration = { duration },
                             qualityLabel = { quality },
                             episodeTitle = mediaTitle,
-                            modifier = Modifier
-                                .fillMaxSize(),
+                            modifier = Modifier.fillMaxSize(),
                             onBackClick = {
                                 finishAndRemoveTask()
                             },
@@ -450,8 +446,7 @@ class ExoplayerActivity : ComponentActivity() {
                                     snackbarLambda(
                                         SnackbarModel(
                                             message = UiText.StringRes(R.string.no_more_media)
-                                                .string(this@ExoplayerActivity),
-                                            isError = false
+                                                .string(this@ExoplayerActivity), isError = false
                                         )
                                     )
                                 }
@@ -494,8 +489,7 @@ class ExoplayerActivity : ComponentActivity() {
                                     Icon(Icons.Default.FastForward, null)
                                     Text(
                                         text = stringResource(
-                                            R.string.skip_button_label,
-                                            skipLabel
+                                            R.string.skip_button_label, skipLabel
                                         )
                                     )
                                 }
@@ -599,6 +593,7 @@ class ExoplayerActivity : ComponentActivity() {
 
     /**
      * Builds a default history entry using info from the [watchBundle]
+     * @param id: String - The ID of the Module being used for playback
      * @param duration: Long - Duration of the media in milliseconds. Defaults to using [mediaDuration]
      * @param playbackPosition: Long - Playback position in milliseconds. Defaults to [playbackPosition]
      * @return Filled [HistoryEntry], using the selected media index of the first [media] to get image url
@@ -606,15 +601,18 @@ class ExoplayerActivity : ComponentActivity() {
      * greater than one, and "Movie" for those which don't.
      */
     suspend fun buildHistoryEntry(
-        duration: Long? = null, playbackPosition: Long? = null
+        id: String? = null, duration: Long? = null, playbackPosition: Long? = null
     ): HistoryEntry {
+        val id =
+            id ?: selectedModule.first()?.id ?: throw IllegalStateException("No Module Selected")
         val duration = duration ?: mediaDuration.first()
         val playbackPosition = playbackPosition ?: currentPlaybackPosition.first()
         return HistoryEntry(
+            moduleId = id,
             parentUrl = watchBundle.infoUrl,
             mediaIndex = watchBundle.selectedMediaIndex,
             entryDuration = duration,
-            entryProgress = playbackPosition * 100.0 / duration,
+            entryProgress = if (0 in arrayOf(playbackPosition, duration)) 0.0 else (playbackPosition * 100.0 / duration),
             // TODO: Use the module to get the discriminator?
             entryDiscriminator = if (media.first().list.size > 1) "Episode" else "Movie",
             entryLastUpdated = Timestamp(System.currentTimeMillis()),
@@ -642,9 +640,13 @@ class ExoplayerActivity : ComponentActivity() {
                 currentPlaybackPosition.emit(player.currentPosition)
                 mediaDuration.emit(player.duration)
                 mediaQuality.emit("${player.videoSize.width}x${player.videoSize.height}")
-                historyUseCases.updateHistory(
-                    buildHistoryEntry()
-                )
+                selectedModule.firstOrNull()?.let {
+                    historyUseCases.updateHistory(
+                        buildHistoryEntry(
+                            playbackPosition = player.currentPosition, duration = player.duration
+                        )
+                    )
+                }
             }
         }
 

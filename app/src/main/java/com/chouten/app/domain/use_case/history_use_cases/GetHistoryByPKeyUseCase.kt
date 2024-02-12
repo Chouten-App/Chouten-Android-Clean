@@ -6,5 +6,5 @@ import javax.inject.Inject
 class GetHistoryByPKeyUseCase  @Inject constructor(
     private val historyRepository: HistoryRepository
 ){
-    suspend operator fun invoke(url: String, index: Int) = historyRepository.getHistoryByPKey(url, index)
+    suspend operator fun invoke(id: String, url: String, index: Int) = historyRepository.getHistoryByPKey(id, url, index)
 }

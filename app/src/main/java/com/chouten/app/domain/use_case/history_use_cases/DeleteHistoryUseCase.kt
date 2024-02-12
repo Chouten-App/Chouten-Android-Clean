@@ -18,11 +18,12 @@ class DeleteHistoryUseCase @Inject constructor(
     /**
      * Deletes a history entry by its composite primary key.
      * Gets the history entry by its key and deletes it.
+     * @param id: String - The Module ID used for the entry
      * @param url: [String] The Parent URL of the history entry to delete.
      * @param index: [Int] The Media Index of the history entry to delete (0-based)
      */
-    suspend operator fun invoke(url: String, index: Int) {
-        historyRepository.getHistoryByPKey(url, index)?.let {
+    suspend operator fun invoke(id: String, url: String, index: Int) {
+        historyRepository.getHistoryByPKey(id, url, index)?.let {
             historyRepository.deleteHistoryEntry(it)
         }
     }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.BottomSheetScaffold
@@ -64,7 +63,7 @@ import kotlinx.serialization.json.Json
 /**
  * Watch Bundle used for passing around the necessary data for a watch session.
  * @param mediaUuid The UUID of the media to watch. References files within the app's cache directory.
- * (e.g <mediaUuid>_server.json, <mediaUuid>_source.json)
+ * (e.g <mediaUuid>_server.json, <mediaUuid>_source.json).
  * @param url The url of the media selected from the [InfoView].
  * @param infoUrl The url of the item's info page
  * @param selectedMediaIndex The index of the media selected from the [InfoView]. (e.g. 0 for the first media)
@@ -132,8 +131,7 @@ fun WatchView(
             // want the server handler to be cancelled when the view is recomposed
             watchViewModel.viewModelScope.launch {
                 watchViewModel.getServers(
-                    bundle,
-                    bundle.selectedMediaIndex
+                    bundle, bundle.selectedMediaIndex
                 )
             }
         } else if (servers == null) {
@@ -166,16 +164,14 @@ fun WatchView(
     ) {
         if (!status.isSourceSet) {
             CircularProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center)
             )
         }
         AnimatedVisibility(visible = servers != null, enter = fadeIn()) {
             val sourceLambda: suspend () -> Unit = {
-                val serverUrl =
-                    servers?.getOrNull(selectedServer)?.list?.getOrNull(
-                        selectedSource
-                    )?.url
+                val serverUrl = servers?.getOrNull(selectedServer)?.list?.getOrNull(
+                    selectedSource
+                )?.url
                 watchViewModel.getSource(serverUrl ?: "")
             }
             if (servers?.size == 1) {
@@ -184,87 +180,76 @@ fun WatchView(
                 }
                 return@AnimatedVisibility
             }
-            BottomSheetScaffold(
-                scaffoldState = BottomSheetScaffoldState(
-                    bottomSheetState = SheetState(
-                        skipPartiallyExpanded = true,
-                        initialValue = SheetValue.Expanded
-                    ),
-                    snackbarHostState = SnackbarHostState()
-                ),
-                modifier = Modifier.fillMaxSize(),
-                sheetPeekHeight = 150.dp,
-                sheetContent = {
-                    servers?.let {
-                        if (it.isEmpty()) return@let null
+            BottomSheetScaffold(scaffoldState = BottomSheetScaffoldState(
+                bottomSheetState = SheetState(
+                    skipPartiallyExpanded = true, initialValue = SheetValue.Expanded
+                ), snackbarHostState = SnackbarHostState()
+            ), modifier = Modifier.fillMaxSize(), sheetPeekHeight = 150.dp, sheetContent = {
+                servers?.let {
+                    if (it.isEmpty()) return@let null
 
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            itemsIndexed(it) { index, serverData ->
-                                ListItem(
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(
-                                            12.dp
-                                        )
-                                    ),
-                                    modifier = Modifier
-                                        .clip(MaterialTheme.shapes.medium)
-                                        .clickable {
-                                            runBlocking { sourceLambda() }
-                                        },
-                                    headlineContent = {
-                                        Text(
-                                            serverData.title.trim(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    supportingContent = {
-                                        Text(
-                                            "${serverData.list.firstOrNull()?.name?.trim()}",
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    leadingContent = {
-                                        Text(
-                                            "#${index + 1}",
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    trailingContent = {
-                                        Text("${serverData.list.size} Sources")
-                                    }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        itemsIndexed(it) { index, serverData ->
+                            ListItem(colors = ListItemDefaults.colors(
+                                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(
+                                    12.dp
                                 )
-                            }
-                        }
-                    } ?: run {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                "(×﹏×)",
-                                fontSize = MaterialTheme.typography.headlineLarge.fontSize
-                            )
-                            Text(
-                                UiText.StringRes((R.string.no_servers_found))
-                                    .string(),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                textAlign = TextAlign.Center
-                            )
+                            ),
+                                modifier = Modifier
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .clickable {
+                                        runBlocking { sourceLambda() }
+                                    },
+                                headlineContent = {
+                                    Text(
+                                        serverData.title.trim(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(
+                                        "${serverData.list.firstOrNull()?.name?.trim()}",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                leadingContent = {
+                                    Text(
+                                        "#${index + 1}",
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                trailingContent = {
+                                    Text("${serverData.list.size} Sources")
+                                })
                         }
                     }
+                } ?: run {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "(×﹏×)", fontSize = MaterialTheme.typography.headlineLarge.fontSize
+                        )
+                        Text(
+                            UiText.StringRes((R.string.no_servers_found)).string(),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-            ) {}
+            }) {}
         }
     }
 }

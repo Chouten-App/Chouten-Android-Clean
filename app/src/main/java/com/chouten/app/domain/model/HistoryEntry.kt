@@ -7,6 +7,7 @@ import java.sql.Timestamp
 /**
  * HistoryEntry is a data class that represents a single entry in the history table.
  *
+ * @param moduleId: String - The ID of the module used for viewing the media
  * @param parentUrl: String - The URL of the Info page
  * @param mediaIndex: Int - The index of the media
  * @param entryTitle: String - The title of the Entry
@@ -17,9 +18,10 @@ import java.sql.Timestamp
  * @param entryLastUpdated: Timestamp - The last time the Entry was updated
  */
 @Entity(
-    primaryKeys = ["parentUrl", "mediaIndex"]
+    primaryKeys = ["moduleId", "parentUrl", "mediaIndex"]
 )
 data class HistoryEntry(
+    val moduleId: String,
     val parentUrl: String,
     val mediaIndex: Int,
     val entryTitle: String,

@@ -19,11 +19,12 @@ interface HistoryRepository {
 
     /**
      * Returns a single [HistoryEntry] or null using the composite primary key of the entry
+     * @param id: String - The Module ID used for the entry
      * @param url: String - The parent url of the entry (info page url)
      * @param index: Int - The (0-based) media index of the entry
      * @return A single [HistoryEntry] or null
      */
-    suspend fun getHistoryByPKey(url: String, index: Int): HistoryEntry?
+    suspend fun getHistoryByPKey(id: String, url: String, index: Int): HistoryEntry?
 
     /**
      * Inserts a [HistoryEntry] into the database.

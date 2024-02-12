@@ -23,11 +23,12 @@ interface HistoryDao {
 
     /**
      * Get a single [HistoryEntry] via its composite primary key
+     * @param id: String -> The ID of the module used by the entry
      * @param url: String - The url of the entry (info page url)
      * @param index: Int - The (0-based) media index of the entry
      */
-    @Query("SELECT * FROM HistoryEntry WHERE parentUrl = :url AND mediaIndex = :index")
-    suspend fun getHistoryByPKey(url: String, index: Int): HistoryEntry?
+    @Query("SELECT * FROM HistoryEntry WHERE moduleId = :id AND parentUrl = :url AND mediaIndex = :index")
+    suspend fun getHistoryByPKey(id: String, url: String, index: Int): HistoryEntry?
 
     /**
      * Insert a new [HistoryEntry] into the database
