@@ -82,6 +82,7 @@ import com.chouten.app.common.Navigation
 import com.chouten.app.common.Resource
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
+import com.chouten.app.presentation.ui.screens.destinations.HistoryViewDestination
 import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
 import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
@@ -101,7 +102,8 @@ fun InfoView(
     url: String,
     snackbarLambda: (SnackbarModel) -> Unit,
     appViewModel: ChoutenAppViewModel = hiltViewModel(),
-    infoViewModel: InfoViewModel = hiltViewModel()
+    infoViewModel: InfoViewModel = hiltViewModel(),
+    resumeIndex: Int?
 ) {
     val infoResults by infoViewModel.infoResults.collectAsState()
     val episodeList by infoViewModel.episodeList.collectAsState()
@@ -159,6 +161,34 @@ fun InfoView(
             // We have no further episodes to load
             // so don't need the webview anymore.
             infoViewModel.epListHandler.destroy()
+        }
+
+        if (episodeList is Resource.Success) {
+            val urls = infoViewModel.getMediaList().find { it.title == selectedSeason?.name }?.list
+                ?: episodeList.data?.getOrNull(0)?.list ?: listOf()
+            resumeIndex?.let {
+                urls.getOrNull(it)?.let { resumeUrl ->
+                    val bundle = WatchBundle(
+                        mediaUuid = infoViewModel.FILE_PREFIX.toString(),
+                        selectedMediaIndex = it,
+                        url = resumeUrl.url,
+                        infoUrl = url,
+                        mediaTitle = URLDecoder.decode(
+                            title, "UTF-8"
+                        )
+                    )
+
+                    appViewModel.runAsync {
+                        infoViewModel.saveMediaBundle()
+                    }
+
+                    navigator.navigate(
+                        WatchViewDestination(
+                            bundle,
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -431,19 +461,21 @@ fun InfoView(
                                             .find { it.title == selectedSeason?.name }?.list
                                             ?: episodeList.data?.getOrNull(0)?.list ?: listOf()
                                     ) { index, item ->
+                                        if (resumeIndex != null) navigator.popBackStack(
+                                            HistoryViewDestination, false
+                                        )
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
                                             Modifier.clickable {
-                                                val bundle =
-                                                    WatchBundle(
-                                                        mediaUuid = infoViewModel.FILE_PREFIX.toString(),
-                                                        selectedMediaIndex = index,
-                                                        url = item.url,
-                                                        mediaTitle = URLDecoder.decode(
-                                                            title,
-                                                            "UTF-8"
-                                                        )
+                                                val bundle = WatchBundle(
+                                                    mediaUuid = infoViewModel.FILE_PREFIX.toString(),
+                                                    selectedMediaIndex = index,
+                                                    url = item.url,
+                                                    infoUrl = url,
+                                                    mediaTitle = URLDecoder.decode(
+                                                        title, "UTF-8"
                                                     )
+                                                )
 
                                                 // We must run using the appViewModel's coroutine scope
                                                 // since the InfoViewModel will be destroyed when we

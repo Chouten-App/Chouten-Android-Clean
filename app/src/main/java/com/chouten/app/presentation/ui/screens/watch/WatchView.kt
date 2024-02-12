@@ -66,6 +66,7 @@ import kotlinx.serialization.json.Json
  * @param mediaUuid The UUID of the media to watch. References files within the app's cache directory.
  * (e.g <mediaUuid>_server.json, <mediaUuid>_source.json)
  * @param url The url of the media selected from the [InfoView].
+ * @param infoUrl The url of the item's info page
  * @param selectedMediaIndex The index of the media selected from the [InfoView]. (e.g. 0 for the first media)
  * @param mediaTitle The title of the media selected from the [InfoView].
  */
@@ -73,6 +74,7 @@ import kotlinx.serialization.json.Json
 data class WatchBundle(
     val mediaUuid: String,
     val url: String,
+    val infoUrl: String,
     val selectedMediaIndex: Int,
     val mediaTitle: String,
 )

@@ -11,11 +11,19 @@ interface HistoryRepository {
     fun getHistory(): Flow<List<HistoryEntry>>
 
     /**
-     * Returns a [HistoryEntry] by url.
-     * @param url The url of the [HistoryEntry].
-     * @return [HistoryEntry] by url.
+     * Returns a list of [HistoryEntry] by parent url.
+     * @param url The parent url of the [HistoryEntry].
+     * @return [List<HistoryEntry>?] by url.
      */
-    suspend fun getHistoryByUrl(url: String): HistoryEntry?
+    suspend fun getHistoryByUrl(url: String): List<HistoryEntry>?
+
+    /**
+     * Returns a single [HistoryEntry] or null using the composite primary key of the entry
+     * @param url: String - The parent url of the entry (info page url)
+     * @param index: Int - The (0-based) media index of the entry
+     * @return A single [HistoryEntry] or null
+     */
+    suspend fun getHistoryByPKey(url: String, index: Int): HistoryEntry?
 
     /**
      * Inserts a [HistoryEntry] into the database.

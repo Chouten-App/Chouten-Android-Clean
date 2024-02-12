@@ -15,11 +15,19 @@ interface HistoryDao {
     fun getHistory(): Flow<List<HistoryEntry>>
 
     /**
-     * Get a single [HistoryEntry] by its URL
+     * Get a list of [HistoryEntry]s using their Parent URL
      * @param url: String - The URL of the Entry
      */
-    @Query("SELECT * FROM HistoryEntry WHERE entryUrl = :url")
-    suspend fun getHistoryByUrl(url: String): HistoryEntry?
+    @Query("SELECT * FROM HistoryEntry WHERE parentUrl = :url")
+    suspend fun getHistoryByUrl(url: String): List<HistoryEntry>?
+
+    /**
+     * Get a single [HistoryEntry] via its composite primary key
+     * @param url: String - The url of the entry (info page url)
+     * @param index: Int - The (0-based) media index of the entry
+     */
+    @Query("SELECT * FROM HistoryEntry WHERE parentUrl = :url AND mediaIndex = :index")
+    suspend fun getHistoryByPKey(url: String, index: Int): HistoryEntry?
 
     /**
      * Insert a new [HistoryEntry] into the database

@@ -13,15 +13,17 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chouten.app.common.LocalAppPadding
 import com.chouten.app.common.Navigation
+import com.chouten.app.presentation.ui.screens.destinations.InfoViewDestination
 import com.ramcosta.composedestinations.annotation.Destination
-import kotlinx.coroutines.launch
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @Composable
 @Destination(
     route = Navigation.HistoryRoute
 )
 fun HistoryView(
-    viewModel: HistoryViewModel = hiltViewModel()
+    viewModel: HistoryViewModel = hiltViewModel(),
+    navigator: DestinationsNavigator
 ) {
     val history by viewModel.history.collectAsState(emptyList())
     val coroutineScope = rememberCoroutineScope()
@@ -30,9 +32,13 @@ fun HistoryView(
     ) {
         items(items = history) { historyEntry ->
             Text(text = historyEntry.entryTitle, modifier = Modifier.clickable {
-                coroutineScope.launch {
-                    viewModel.updateHistoryEntry(historyEntry.copy(entryTitle = "Updated ${historyEntry.entryTitle}"))
-                }
+                navigator.navigate(
+                    InfoViewDestination(
+                        title = historyEntry.entryTitle,
+                        url = historyEntry.parentUrl,
+                        resumeIndex = historyEntry.mediaIndex
+                    )
+                )
             })
         }
     }

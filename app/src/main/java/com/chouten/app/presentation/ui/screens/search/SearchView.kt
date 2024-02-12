@@ -136,7 +136,7 @@ fun SearchView(
                                     SearchResultItem(item = it, onClick = { title, url ->
                                         navigator.navigate(
                                             InfoViewDestination(
-                                                title = title, url = url
+                                                title = title, url = url, resumeIndex = null
                                             )
                                         )
                                     })

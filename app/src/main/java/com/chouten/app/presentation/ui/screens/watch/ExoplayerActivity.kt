@@ -73,23 +73,28 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import com.chouten.app.R
 import com.chouten.app.common.UiText
+import com.chouten.app.domain.model.HistoryEntry
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.model.SnackbarModel
 import com.chouten.app.domain.proto.moduleDatastore
+import com.chouten.app.domain.use_case.history_use_cases.HistoryUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import com.chouten.app.presentation.ui.components.snackbar.SnackbarHost
 import com.chouten.app.presentation.ui.screens.info.InfoResult
 import com.chouten.app.presentation.ui.theme.ChoutenTheme
 import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import java.io.File
+import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -105,6 +110,13 @@ class ExoplayerActivity : ComponentActivity() {
      */
     @Inject
     lateinit var moduleUseCases: ModuleUseCases
+
+    /**
+     * Used for tracking and reading the history
+     * for storing elapsed progress.
+     */
+    @Inject
+    lateinit var historyUseCases: HistoryUseCases
 
     /**
      * The handler is used to recursively check & update the playback position
@@ -127,6 +139,11 @@ class ExoplayerActivity : ComponentActivity() {
      * The [MediaItem] to be played by the [ExoPlayer]
      */
     private lateinit var mediaItem: MediaItem
+
+    /**
+     * The time that the media last progressed to (-1 if the media has not been played before)
+     */
+    private var startTime: Double = -1.0
 
     /**
      * Is the ExoPlayer initialized? Used to prevent the player from being initialized multiple times
@@ -291,6 +308,21 @@ class ExoplayerActivity : ComponentActivity() {
         }.build()
 
         if (!isInitialized) buildPlayer()
+
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                historyUseCases.getHistoryByPKey(
+                    watchBundle.infoUrl, watchBundle.selectedMediaIndex
+                )?.let {
+                    startTime =
+                        if (it.entryProgress > 0) (it.entryDuration / 100) * it.entryProgress else 0.0
+                } ?: run {
+                    historyUseCases.insertHistory(
+                        buildHistoryEntry(playbackPosition = 0, duration = 0)
+                    )
+                }
+            }
+        }
 
         setContent {
             ChoutenTheme {
@@ -565,9 +597,43 @@ class ExoplayerActivity : ComponentActivity() {
         startActivity(intent)
     }
 
+    /**
+     * Builds a default history entry using info from the [watchBundle]
+     * @param duration: Long - Duration of the media in milliseconds. Defaults to using [mediaDuration]
+     * @param playbackPosition: Long - Playback position in milliseconds. Defaults to [playbackPosition]
+     * @return Filled [HistoryEntry], using the selected media index of the first [media] to get image url
+     * Assumes "Episode" as discriminator for entries which have their first media list (`media.first().list`) length
+     * greater than one, and "Movie" for those which don't.
+     */
+    suspend fun buildHistoryEntry(
+        duration: Long? = null, playbackPosition: Long? = null
+    ): HistoryEntry {
+        val duration = duration ?: mediaDuration.first()
+        val playbackPosition = playbackPosition ?: currentPlaybackPosition.first()
+        return HistoryEntry(
+            parentUrl = watchBundle.infoUrl,
+            mediaIndex = watchBundle.selectedMediaIndex,
+            entryDuration = duration,
+            entryProgress = playbackPosition * 100.0 / duration,
+            // TODO: Use the module to get the discriminator?
+            entryDiscriminator = if (media.first().list.size > 1) "Episode" else "Movie",
+            entryLastUpdated = Timestamp(System.currentTimeMillis()),
+            entryImage = media.first().list.getOrNull(watchBundle.selectedMediaIndex)?.image ?: "",
+            entryTitle = watchBundle.mediaTitle
+        )
+    }
+
     inner class ExoplayerEventHandler : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             super.onEvents(player, events)
+            // startTime is -1.0 when there is no previous history
+            if (startTime != -1.0) {
+                lifecycleScope.launch {
+                    currentPlaybackPosition.emit(startTime.toLong())
+                    exoplayer.seekTo(startTime.toLong())
+                    startTime = -1.0
+                }
+            }
 
             lifecycleScope.launch {
                 isPlaying.emit(player.isPlaying)
@@ -576,6 +642,9 @@ class ExoplayerActivity : ComponentActivity() {
                 currentPlaybackPosition.emit(player.currentPosition)
                 mediaDuration.emit(player.duration)
                 mediaQuality.emit("${player.videoSize.width}x${player.videoSize.height}")
+                historyUseCases.updateHistory(
+                    buildHistoryEntry()
+                )
             }
         }
 

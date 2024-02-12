@@ -7,21 +7,25 @@ import java.sql.Timestamp
 /**
  * HistoryEntry is a data class that represents a single entry in the history table.
  *
- * @param entryUrl: String - The Unique URL for the Entry
+ * @param parentUrl: String - The URL of the Info page
+ * @param mediaIndex: Int - The index of the media
  * @param entryTitle: String - The title of the Entry
  * @param entryImage: String - The image for the Entry
  * @param entryDiscriminator: String - The discriminator for the Entry (e.g Episode, Chapter)
- * @param entryProgress: Long - How far the user has read/watched the Entry (% elapsed)
+ * @param entryProgress: Double - How far the user has read/watched the Entry (% elapsed)
  * @param entryDuration: Long - The total duration of the Entry (the multiplier for entryProgress)
  * @param entryLastUpdated: Timestamp - The last time the Entry was updated
  */
-@Entity
+@Entity(
+    primaryKeys = ["parentUrl", "mediaIndex"]
+)
 data class HistoryEntry(
-    @PrimaryKey val entryUrl: String,
+    val parentUrl: String,
+    val mediaIndex: Int,
     val entryTitle: String,
     val entryImage: String,
     val entryDiscriminator: String,
-    val entryProgress: Long,
+    val entryProgress: Double,
     val entryDuration: Long,
     val entryLastUpdated: Timestamp
 )
