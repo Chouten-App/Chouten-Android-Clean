@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.util.Rational
 import android.util.TypedValue
 import android.view.ViewGroup
@@ -616,7 +617,9 @@ class ExoplayerActivity : ComponentActivity() {
             // TODO: Use the module to get the discriminator?
             entryDiscriminator = if (media.first().list.size > 1) "Episode" else "Movie",
             entryLastUpdated = Timestamp(System.currentTimeMillis()),
-            entryImage = media.first().list.getOrNull(watchBundle.selectedMediaIndex)?.image ?: "",
+            entryImage = watchBundle.mediaImage.also {
+                 Log.d("ExoplayerActivity", "Added Image URL - $it")
+            },
             entryTitle = watchBundle.mediaTitle
         )
     }

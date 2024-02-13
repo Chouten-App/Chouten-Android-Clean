@@ -68,6 +68,7 @@ import kotlinx.serialization.json.Json
  * @param infoUrl The url of the item's info page
  * @param selectedMediaIndex The index of the media selected from the [InfoView]. (e.g. 0 for the first media)
  * @param mediaTitle The title of the media selected from the [InfoView].
+ * @param mediaImage The url of the media thumbnail
  */
 @Serializable
 data class WatchBundle(
@@ -76,6 +77,7 @@ data class WatchBundle(
     val infoUrl: String,
     val selectedMediaIndex: Int,
     val mediaTitle: String,
+    val mediaImage: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

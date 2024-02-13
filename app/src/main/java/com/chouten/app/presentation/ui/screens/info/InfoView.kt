@@ -175,7 +175,8 @@ fun InfoView(
                         infoUrl = url,
                         mediaTitle = URLDecoder.decode(
                             title, "UTF-8"
-                        )
+                        ),
+                        mediaImage = URLDecoder.decode(resumeUrl.image ?: "", "UTF-8")
                     )
 
                     appViewModel.runAsync {
@@ -473,7 +474,8 @@ fun InfoView(
                                                     infoUrl = url,
                                                     mediaTitle = URLDecoder.decode(
                                                         title, "UTF-8"
-                                                    )
+                                                    ),
+                                                    mediaImage = URLDecoder.decode(item.image ?: infoResults.data?.poster, "UTF-8")
                                                 )
 
                                                 // We must run using the appViewModel's coroutine scope
