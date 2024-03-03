@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.room.Room
 import com.chouten.app.data.data_source.history.HistoryDatabase
 import com.chouten.app.data.data_source.log.LogDatabase
+import com.chouten.app.data.data_source.module.ModuleDatabase
 import com.chouten.app.data.repository.HistoryRepositoryImpl
 import com.chouten.app.data.repository.LogRepositoryImpl
 import com.chouten.app.data.repository.ModuleRepositoryImpl
@@ -122,7 +123,7 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideModuleRepository(app: Application, httpClient: Requests): ModuleRepository {
+    fun provideModuleRepository(app: Application, httpClient: Requests, moduleDatabase: ModuleDatabase): ModuleRepository {
         val moduleDirGetter: suspend (Uri) -> Uri = { uri: Uri ->
             try {
                 GetModuleDirUseCase(
@@ -132,14 +133,21 @@ object AppModule {
                 Uri.EMPTY
             }
         }
-        return ModuleRepositoryImpl(app.applicationContext, moduleDirGetter)
+        return ModuleRepositoryImpl(app.applicationContext, moduleDatabase)
     }
+
+    @Singleton
+    @Provides
+    fun provideModuledatabase(app: Application): ModuleDatabase =
+        Room.databaseBuilder(app, ModuleDatabase::class.java, ModuleDatabase.DATABASE_NAME).build()
 
     @Singleton
     @Provides
     fun provideModuleUseCases(
         moduleRepository: ModuleRepository,
-        app: Application, logRepository: LogRepository, httpClient: Requests
+        app: Application,
+        logRepository: LogRepository,
+        httpClient: Requests
     ): ModuleUseCases {
         val log: suspend (String) -> Unit = { message: String ->
             Log.d("ModuleUseCases", message)
@@ -175,8 +183,7 @@ object AppModule {
                 moduleRepository,
                 httpClient,
                 log,
-                moduleJsonParser,
-                moduleDirGetter
+                moduleJsonParser
             ), getModuleDir = moduleDirUsecase, removeModule = RemoveModuleUseCase(
                 app.applicationContext,
                 moduleRepository,

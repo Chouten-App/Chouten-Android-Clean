@@ -1,23 +1,33 @@
 package com.chouten.app.domain.use_case.module_use_cases
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.text.toUpperCase
 import androidx.core.content.FileProvider
-import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
 import com.chouten.app.common.OutOfDateAppException
 import com.chouten.app.common.OutOfDateModuleException
+import com.chouten.app.common.findDocument
 import com.chouten.app.domain.model.ModuleModel
 import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.domain.repository.ModuleRepository
 import com.lagradost.nicehttp.Requests
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
+import okio.buffer
+import okio.sink
+import okio.source
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.UUID
+import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
 sealed class ModuleInstallEvent() {
@@ -35,36 +45,33 @@ class AddModuleUseCase @Inject constructor(
     private val moduleRepository: ModuleRepository,
     private val httpClient: Requests,
     private val log: suspend (String) -> Unit,
-    private val jsonParser: suspend (String) -> ModuleModel,
-    private val getModuleDir: suspend (Uri) -> Uri,
+    private val jsonParser: suspend (String) -> ModuleModel
 ) {
+
+    enum class ModuleDirectories {
+        HOME, SEARCH, INFO, MEDIA,
+    }
 
     /**
      * Adds a module to the module folder
      * @param uri The URI of the module (either a local file or a remote resource)
-     * @param callback The callback that is called during each stage of the module installation
+     * @param callback The callback that is called during each stage of the module installation.
+     * True: Cancellation (with the exception of the INSTALLED event)
+     * False: Continuation
      * @throws IOException if the module cannot be downloaded or added (e.g duplicate/unsupported version)
-     * @throws IllegalArgumentException if the URI is invalid. Not a valid module (e.g not a zip or no metadata)
+     * @throws FileNotFoundException If the module is missing files (no metadata.json)
+     * @throws IllegalArgumentException if the URI is invalid. Not a valid module (e.g not a zip)
      */
     suspend operator fun invoke(uri: Uri, callback: (ModuleInstallEvent) -> Boolean) =
         withContext(Dispatchers.IO) {
             val contentResolver = mContext.contentResolver
-            val preferences = mContext.filepathDatastore.data.first()
-            val moduleDirUri = getModuleDir(preferences.CHOUTEN_ROOT_DIR)
-
-            val moduleDirs = moduleRepository.getModuleDirs()
-            val moduleCount = moduleDirs.size
 
             /**
-             * Throw an exception safely, deleting the module directory if it exists
+             * Throw an exception safely, deleting the file if it exists
              */
-            val safeException: suspend (Exception, Uri?) -> Nothing = { it, toDelete ->
+            val safeException: suspend (Exception, File?) -> Nothing = { it, toDelete ->
                 log("Error adding module: ${it.message}")
-                toDelete?.let { deleteUri ->
-                    DocumentFile.fromTreeUri(
-                        mContext, deleteUri.toString().removeSuffix("/children").toUri()
-                    )?.delete()
-                }
+                toDelete?.delete()
                 throw it
             }
 
@@ -72,11 +79,10 @@ class AddModuleUseCase @Inject constructor(
             val isRemote = uri.scheme in setOf("http", "https")
 
             /**
-             * The URI of the module which we will pass on to the module repository
-             * If the module is remote, this will be the URI of the module folder
-             * If the module is local, the new URI will be null
+             * The cached .module file and the URI of the .module file which we will pass on to the module repository
+             * The cached module is null unless the module was downloaded from a remote location.
              */
-            val newUri: Uri? = if (isRemote) {
+            val (cachedModule, newUri) = if (isRemote) {
                 if (callback(ModuleInstallEvent.DOWNLOADING)) return@withContext
                 log("Downloading remote module $uri")
 
@@ -88,7 +94,7 @@ class AddModuleUseCase @Inject constructor(
                 val moduleFile = mContext.cacheDir?.resolve(
                     uri.lastPathSegment ?:
                     // If the module does not have a name, we will generate a random one
-                    "Module $moduleCount"
+                    UUID.randomUUID().toString()
                 ) ?: throw IOException("Could not create module directory")
 
                 // Write the bytes from the remote resource to the module file
@@ -100,122 +106,66 @@ class AddModuleUseCase @Inject constructor(
 
                 if (callback(ModuleInstallEvent.DOWNLOADED(moduleFile))) return@withContext
                 log("Downloaded module to $moduleFile")
-                FileProvider.getUriForFile(
+                (moduleFile to FileProvider.getUriForFile(
                     mContext, "${mContext.packageName}.provider", moduleFile
-                ) ?: throw IOException("Could not get module URI")
-            } else null
-
-            /**
-             * The URI of the module which has been added to the module folder
-             */
-            val newModuleUri = try {
-                if (callback(ModuleInstallEvent.CACHING(newUri ?: uri))) return@withContext
-                moduleRepository.addModule(
-                    newUri ?: uri
-                ).also { _ ->
-                    if (isRemote) {
-                        // Delete the module file if we downloaded it
-                        mContext.cacheDir?.resolve(
-                            uri.lastPathSegment ?:
-                            // If the module does not have a name, we will generate a random one
-                            "Module $moduleCount"
-                        )?.delete()
-                    }
-                }.let { moduleUri ->
-                    // Rename the module folder to include .tmp as a suffix
-                    // This is to prevent the module from being parsed by the module repository
-                    // if it is not fully parsed yet
-                    val renamed = DocumentsContract.renameDocument(
-                        contentResolver,
-                        moduleUri,
-                        ((newUri ?: uri).lastPathSegment ?: "Module $moduleCount") + ".tmp"
-                    ) ?: safeException(
-                        IOException("Could not rename module folder to <name>.tmp; try clearing module artifacts"),
-                        moduleUri
-                    )
-
-                    DocumentsContract.buildChildDocumentsUriUsingTree(
-                        moduleUri, DocumentsContract.getDocumentId(renamed)
-                    )?.also {
-                        if (callback(ModuleInstallEvent.CACHED(it))) safeException(
-                            InterruptedException("Cancelled via Callback"),
-                            moduleUri
-                        )
-                    } ?: safeException(
-                        IOException("Could not get module folder children"), moduleUri
-                    )
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // Delete the module file if we downloaded it
-                if (isRemote) {
-                    mContext.cacheDir?.resolve(
-                        uri.lastPathSegment ?:
-                        // If the module does not have a name, we will generate a random one
-                        "Module $moduleCount"
-                    )?.delete()
-                }
-                safeException(e, null)
-            }
-
-            // Add a .nomedia file to the module folder
-            if (DocumentsContract.createDocument(
-                    contentResolver, newModuleUri, "application/octet-stream", ".nomedia"
-                ) == null
-            ) {
-                // No need to throw an exception here, as it does not affect the functionality of the app
-                log("Could not create .nomedia file in $newModuleUri")
-            }
+                ))
+            } else null to uri
 
             // Parse the module and test if it is valid
-            // If valid, we can rename the module folder to the module name
-            if (callback(ModuleInstallEvent.PARSING(newModuleUri))) safeException(
-                InterruptedException("Cancelled via Callback"),
-                newModuleUri
+            if (callback(ModuleInstallEvent.PARSING(newUri))) safeException(
+                InterruptedException("Cancelled via Callback"), cachedModule
             )
-            log("Parsing module $newModuleUri")
+            log("Parsing module $newUri")
 
-            // Get the metadata of the module
-            val metadataUri: Uri = contentResolver.query(
-                newModuleUri, arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                ), null, null, null
-            )?.use { cursor ->
-                val displayNameIndex =
-                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                val documentIdIndex =
-                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            // Unzip the module uri into the module directory
+            val inputStream = contentResolver.openInputStream(newUri)
+                ?: throw IllegalArgumentException("Invalid module uri")
+            val zipInputStream = ZipInputStream(inputStream.buffered())
 
-                while (cursor.moveToNext()) {
-                    val displayName = cursor.getString(displayNameIndex)
-                    val documentId = cursor.getString(documentIdIndex)
-
-                    if (displayName == "metadata.json") {
-                        return@use DocumentsContract.buildDocumentUriUsingTree(
-                            newModuleUri, documentId
-                        )
-                    }
+            val destinationDir =
+                mContext.cacheDir.resolve(UUID.randomUUID().toString() + "-module/").also {
+                    it.mkdirs()
                 }
 
-                // We didn't find the metadata file
-                null
-            } ?: safeException(
-                IllegalArgumentException("Could not get module metadata"),
-                newModuleUri
-            )
+            // Unzip the module and place it in the cache directory
+            zipInputStream.use { zipInputStream ->
+                while (true) {
+                    val entry = zipInputStream.nextEntry ?: break
+
+                    // If the entry is not a directory, create the file
+                    // and the parent directories
+                    if (!entry.isDirectory) {
+                        // Create the file
+                        val document = File(
+                            destinationDir, entry.name
+                        ).also {
+                            it.parentFile?.mkdirs()
+                        }
+
+                        // Write the file
+                        val outputStream = document.outputStream()
+                        outputStream.buffered().use { outputStream ->
+                            zipInputStream.copyTo(outputStream)
+                        }
+                        outputStream.close()
+                    } else {
+                        // Create the directory
+                        destinationDir.resolve(entry.name)
+                    }
+                }
+            }
 
             // Get the metadata file
-            val metadataInputStream = contentResolver.openInputStream(metadataUri) ?: safeException(
-                IOException("Could not open metadata file"), newModuleUri
-            )
-
-            // If something goes wrong, we must delete the module folder
+            val metadataInputStream = destinationDir.resolve("metadata.json").also {
+                if (!it.exists()) safeException(
+                    FileNotFoundException("metadata.json does not exist!"), destinationDir
+                )
+            }.inputStream()
 
             /**
              * The parsed module
              */
-            val module = try {
+            var module = try {
                 metadataInputStream.use {
                     val stringBuffer = StringBuffer()
                     it.bufferedReader().use { reader ->
@@ -231,16 +181,14 @@ class AddModuleUseCase @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
                 safeException(
-                    IllegalArgumentException("Could not parse module", e),
-                    newModuleUri
+                    IllegalArgumentException("Could not parse module", e), destinationDir
                 )
             }
 
             if (callback(ModuleInstallEvent.PARSED(module))) {
                 Log.d("Chouten", "Cancelled via Callback")
                 safeException(
-                    InterruptedException("Cancelled via Callback"),
-                    newModuleUri
+                    InterruptedException("Cancelled via Callback"), destinationDir
                 )
             } else {
                 Log.d("Chouten", "Allowed to continue")
@@ -256,7 +204,7 @@ class AddModuleUseCase @Inject constructor(
                 )
                 safeException(
                     OutOfDateModuleException("${module.name} is out of date (v${module.formatVersion}). Please update the module"),
-                    newModuleUri
+                    destinationDir
                 )
             } else if (module.formatVersion > ModuleModel.MAX_FORMAT_VERSION) {
                 log(
@@ -267,132 +215,147 @@ class AddModuleUseCase @Inject constructor(
                 )
                 safeException(
                     OutOfDateAppException("This version of Chouten does not support ${module.name} (v${module.formatVersion}). Please update Chouten"),
-                    newModuleUri
+                    destinationDir
                 )
             }
 
             // Compare the module with the existing modules
             // If the module already exists, we must check for updates
-            val metadataUriPairs: List<Pair<Uri, ModuleModel>> = moduleDirs.mapNotNull {
-                // We don't want to compare the module with itself
-                if (it == newModuleUri) {
-                    return@mapNotNull null
+            // Compare the module with the existing modules
+            moduleRepository.getModules().firstOrNull()?.forEach { installed ->
+                log("Comparing module ${module.id} (${module.version}) with ${installed.id} (${installed.version})")
+                // Check if the module already exists
+                if (module.id == installed.id) {
+                    if (module.version > installed.version) { // new module version > old module version
+                        moduleRepository.updateModule(module)
+                        log("Updated module ${module.name} (${module.id})")
+                    }
+                    if (module.version == installed.version) { // new module version == old module version
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
+                            destinationDir
+                        )
+                    } else if (module.version < installed.version) { // new module version < old module version
+                        safeException(
+                            IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
+                            destinationDir
+                        )
+                    }
                 }
+            }
 
-                contentResolver.query(
-                    it, arrayOf(
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                    ), null, null, null
-                )?.use { cursor ->
-                    val displayNameIndex =
-                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                    val documentIdIndex =
-                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val dirFiles = destinationDir.listFiles()
+                ?: safeException(IOException("Could not list destination files."), destinationDir)
 
-                    while (cursor.moveToNext()) {
-                        val displayName =
-                            cursor.getString(displayNameIndex) ?: return@mapNotNull null
-                        val documentId = cursor.getString(documentIdIndex) ?: return@mapNotNull null
-
-                        if (displayName == "metadata.json") {
-                            val otherModuleMetadataUri =
-                                DocumentsContract.buildDocumentUriUsingTree(
-                                    moduleDirUri, documentId
-                                ) ?: safeException(
-                                    IllegalArgumentException("Could not get module metadata URI"),
-                                    newModuleUri
-                                )
-
-                            val otherMetadataIS =
-                                contentResolver.openInputStream(otherModuleMetadataUri)
-                                    ?: safeException(
-                                        IOException("Could not open metadata file"),
-                                        otherModuleMetadataUri
+            ModuleDirectories.entries.forEach { dir ->
+                dirFiles.find { it.name.toUpperCase(Locale.current) == dir.name }?.let {
+                    return@let it.resolve("code.js").let code@{ code ->
+                        log("Adding code for ${code.parentFile?.name}.")
+                        val moduleCode = module.code ?: ModuleModel.ModuleCode()
+                        when (dir) {
+                            ModuleDirectories.HOME -> {
+                                module = module.copy(
+                                    code = moduleCode.copy(
+                                        home = listOf(
+                                            ModuleModel.ModuleCode.ModuleCodeblock(
+                                                code = code.readLines().joinToString("\n")
+                                            )
+                                        )
                                     )
-
-                            val parsedModule = try {
-                                val stringBuffer = StringBuffer()
-                                otherMetadataIS.bufferedReader().use { reader ->
-                                    var line = reader.readLine()
-                                    while (line != null) {
-                                        stringBuffer.append(line)
-                                        line = reader.readLine()
-                                    }
-                                }
-
-                                jsonParser(stringBuffer.toString())
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                safeException(
-                                    IllegalArgumentException("Could not parse module metadata", e),
-                                    otherModuleMetadataUri
                                 )
                             }
 
-                            otherMetadataIS.close()
+                            ModuleDirectories.SEARCH -> {
+                                module = module.copy(
+                                    code = moduleCode.copy(
+                                        search = listOf(
+                                            ModuleModel.ModuleCode.ModuleCodeblock(
+                                                code = code.readLines().joinToString("\n")
+                                            )
+                                        )
+                                    )
+                                )
+                            }
 
-                            return@mapNotNull (it to parsedModule)
+                            ModuleDirectories.INFO -> {
+                                module = module.copy(
+                                    code = moduleCode.copy(
+                                        info = listOf(
+                                            ModuleModel.ModuleCode.ModuleCodeblock(
+                                                code = code.readLines().joinToString("\n")
+                                            )
+                                        )
+                                    )
+                                )
+                            }
+
+                            ModuleDirectories.MEDIA -> {
+                                module = module.copy(
+                                    code = module.code?.copy(
+                                        mediaConsume = listOf(
+                                            ModuleModel.ModuleCode.ModuleCodeblock(
+                                                code = code.readLines().joinToString("\n")
+                                            )
+                                        )
+                                    )
+                                )
+                            }
                         }
                     }
-                    return@mapNotNull null
-                } ?: safeException(
-                    IllegalArgumentException("Could not query module folder"), newModuleUri
-                )
+                } ?: log("${module.name} does not contain code for $dir")
             }
 
-            // Compare the module with the existing modules
-            metadataUriPairs.forEach {
-                log("Comparing module ${module.id} (${module.version}) with ${it.second.id} (${it.second.version})")
-                // Check if the module already exists
-                // TODO: check how the error is handled if the module version is invalid, this was previously done here, now idk
-                if (module.id == it.second.id) {
-                    if (module.version > it.second.version) { // new module version > old module version
-                        // Delete the old module
-                        if (DocumentFile.fromSingleUri(mContext, it.first)?.delete() == false) {
-                            safeException(
-                                IOException("Could not delete module ${it.second.name} (${it.second.id})"),
-                                it.first
-                            )
-                        }
-                        log("Updated module ${module.name} (${module.id})")
-                    }
-                    if (module.version == it.second.version) { // new module version == old module version
-                        safeException(
-                            IllegalArgumentException("Module ${module.name} (${module.id}) already exists"),
-                            newModuleUri
+            destinationDir.resolve("icon.png").apply {
+                if (!exists()) {
+                    log("${module.name} does not contain an icon in PNG format")
+                    return@apply
+                }
+
+                val os = ByteArrayOutputStream()
+                BitmapFactory.decodeFile(this@apply.absolutePath)?.apply {
+                    compress(Bitmap.CompressFormat.PNG, 80, os)
+                } ?: log("Could not parse icon.png")
+                module = module.copy(metadata = module.metadata.copy(icon = os.toByteArray()))
+            }
+
+
+                val childDocumentsUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                    it, DocumentsContract.getTreeDocumentId(
+                        DocumentsContract.buildChildDocumentsUriUsingTree(
+                            it, DocumentsContract.getTreeDocumentId(it)
+                        ).findDocument(contentResolver, "Modules") ?: safeException(
+                            IOException(
+                                "Could not find Module Dir at $it"
+                            ), destinationDir
                         )
-                    } else if (module.version < it.second.version) { // new module version < old module version
-                        safeException(
-                            IllegalArgumentException("Module ${module.name} (${module.id}) is older than the existing module"),
-                            newModuleUri
-                        )
+                    )
+                )
+
+                val displayName = "${module.name}_v${module.version}_${module.id}.module"
+                log("Adding artifact $displayName to $childDocumentsUri")
+                childDocumentsUri.findDocument(contentResolver, displayName)?.let { _ ->
+                    log("Existing artifact exists within $childDocumentsUri")
+                } ?: run {
+                    val moduleUri = DocumentsContract.createDocument(
+                        contentResolver, childDocumentsUri, "application/octet-stream", displayName
+                    ) ?: throw IOException("Could not save module artifact")
+                    val stream = if (isRemote) {
+                        cachedModule?.inputStream()
+                    } else contentResolver.openInputStream(uri)
+                    stream?.apply {
+                        contentResolver.openOutputStream(moduleUri)?.sink()?.buffer()
+                            ?.use { buffer ->
+                                buffer.writeAll(source())
+                            }
+                        close()
                     }
                 }
             }
 
-            // Rename the module folder to the module name
-
-            /**
-             * A DocumentFile of newModuleUri
-             */
-            val moduleFolder = DocumentFile.fromTreeUri(
-                mContext, newModuleUri.toString().removeSuffix("/children").toUri()
-            ) ?: safeException(IOException("Could not get module folder"), newModuleUri)
-
-            // Not being able to rename the folder is a critical error as
-            // it will cause the module to not be loaded (.tmp suffix will still be there)
-            // We must throw a safe exception
-            DocumentsContract.renameDocument(
-                contentResolver, newModuleUri, module.name
-            )?.also {
-                if (callback(ModuleInstallEvent.INSTALLED(module))) safeException(
-                    InterruptedException("Cancelled via Callback"),
-                    newModuleUri
-                )
-            } ?: safeException(
-                IOException("Could not rename module folder to <name>.tmp; try clearing module artifacts"),
-                newModuleUri
-            )
+            log("Adding Module $module")
+            moduleRepository.addModule(module).also {
+                callback(ModuleInstallEvent.INSTALLED(module))
+            }
+            destinationDir.delete()
         }
 }
