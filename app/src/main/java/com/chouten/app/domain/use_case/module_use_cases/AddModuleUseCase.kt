@@ -318,6 +318,15 @@ class AddModuleUseCase @Inject constructor(
                 module = module.copy(metadata = module.metadata.copy(icon = os.toByteArray()))
             }
 
+            val preferences = mContext.filepathDatastore.data.firstOrNull()
+            preferences?.CHOUTEN_ROOT_DIR?.let {
+                if (it == Uri.EMPTY) {
+                    log("CHOUTEN_ROOT_DIR is empty. Cannot copy module artifact")
+                    return@let
+                } else if (!preferences.SAVE_MODULE_ARTIFACTS) {
+                    log("SAVE_MODULE_ARTIFACTS is false. Not saving module artifact")
+                    return@let
+                }
 
                 val childDocumentsUri = DocumentsContract.buildChildDocumentsUriUsingTree(
                     it, DocumentsContract.getTreeDocumentId(

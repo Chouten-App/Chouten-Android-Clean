@@ -17,11 +17,13 @@ import kotlinx.serialization.encoding.Encoder
  * Data class representing the user's file preferences.
  * @param CHOUTEN_ROOT_DIR The root directory of the Chouten app. (e.g /storage/emulated/0/Documents/Chouten).
  * @param IS_CHOUTEN_MODULE_DIR_SET Whether the module directory of the Chouten app has been set.
+ * @param SAVE_MODULE_ARTIFACTS Whether to save .module artifacts during module installation
  */
 @Serializable
 data class FilePreferences(
     @Serializable(with = UriSerializer::class) val CHOUTEN_ROOT_DIR: Uri,
     val IS_CHOUTEN_MODULE_DIR_SET: Boolean = false,
+    val SAVE_MODULE_ARTIFACTS: Boolean = true
 ) {
     companion object {
         val DEFAULT = FilePreferences(
