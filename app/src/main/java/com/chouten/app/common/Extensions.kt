@@ -1,9 +1,12 @@
 package com.chouten.app.common
 
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.res.Configuration
+import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -15,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import com.chouten.app.domain.model.Version
 import com.chouten.app.domain.proto.AppearancePreferences
 import com.chouten.app.domain.proto.appearanceDatastore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 
@@ -209,3 +214,32 @@ fun calculateFraction(start: Float, end: Float, pos: Float) =
  * @throws IllegalArgumentException If the version string is not valid.
  */
 fun String.toVersion(useRegex: Boolean = false) = Version(this, useRegex)
+
+/**
+ * Finds a document via filename within a child document uri
+ * @param contentResolver: [ContentResolver]
+ * @param document: [String] - The document filename. NOTE: Example.txt != Example (1).txt
+ * @return Tree Document [Uri] if the document could be found, [null] if it could not be.
+ */
+suspend fun Uri.findDocument(
+    contentResolver: ContentResolver, document: String
+): Uri? = withContext(Dispatchers.IO) {
+    contentResolver.query(
+        this@findDocument, arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME
+        ), null, null, null, null
+    )?.use { cursor ->
+        val nameColumn =
+            cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+        val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+        while (cursor.moveToNext()) {
+            if (cursor.getString(nameColumn) == document) {
+                return@use DocumentsContract.buildTreeDocumentUri(
+                    this@findDocument.authority, cursor.getString(idColumn)
+                )
+            }
+        }
+        null
+    }
+}
