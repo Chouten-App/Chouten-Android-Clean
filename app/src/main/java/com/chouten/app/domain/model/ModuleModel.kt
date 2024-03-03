@@ -2,11 +2,14 @@ package com.chouten.app.domain.model
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
+@Entity
 data class ModuleModel(
     /**
      * The id of the module.
@@ -14,6 +17,7 @@ data class ModuleModel(
      * and should be unique; however, this is not enforced
      * as the app does generate the id itself.
      */
+    @PrimaryKey
     val id: String,
 
     /**

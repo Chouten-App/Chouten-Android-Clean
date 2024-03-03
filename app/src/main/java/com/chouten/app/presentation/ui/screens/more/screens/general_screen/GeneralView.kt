@@ -21,9 +21,16 @@ import androidx.compose.ui.unit.dp
 import com.chouten.app.R
 import com.chouten.app.common.MoreNavGraph
 import com.chouten.app.common.UiText
+import com.chouten.app.domain.proto.CrashReportStore
+import com.chouten.app.domain.proto.FilePreferences
 import com.chouten.app.domain.proto.crashReportStore
+import com.chouten.app.domain.proto.filepathDatastore
 import com.chouten.app.presentation.ui.ChoutenAppViewModel
+import com.chouten.app.presentation.ui.components.common.AppState
+import com.chouten.app.presentation.ui.components.common.rememberAppState
+import com.chouten.app.presentation.ui.components.preferences.PreferenceItem
 import com.chouten.app.presentation.ui.components.preferences.PreferenceToggle
+import com.chouten.app.presentation.ui.safPicker
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
@@ -32,10 +39,15 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 @Destination()
 @Composable
 fun GeneralView(
-    appViewModel: ChoutenAppViewModel, navigator: DestinationsNavigator
+    appState: AppState = rememberAppState(),
+    appViewModel: ChoutenAppViewModel,
+    navigator: DestinationsNavigator
 ) {
     val context = LocalContext.current
-    val crashReportStore by context.crashReportStore.data.collectAsState(null)
+    val crashReportStore by context.crashReportStore.data.collectAsState(CrashReportStore.DEFAULT)
+    val filepathStore by context.filepathDatastore.data.collectAsState(FilePreferences.DEFAULT)
+
+    val picker = safPicker(appState = appState)
 
     Scaffold(topBar = {
         TopAppBar(title = { Text(UiText.StringRes(R.string.general).string()) }, navigationIcon = {
@@ -72,7 +84,37 @@ fun GeneralView(
                         }
                     }
                 },
-                initial = crashReportStore?.enabled ?: true,
+                initial = crashReportStore.enabled,
+            )
+            PreferenceItem(headlineContent = {
+                Text(UiText.Literal("Change Data Directory").string())
+            }, supportingContent = {
+                Text(
+                    UiText.Literal("Change the custom storage directory for Chouten data").string()
+                )
+            }, callback = {
+                picker.launch(filepathStore.CHOUTEN_ROOT_DIR)
+            })
+            PreferenceToggle(
+                headlineContent = {
+                    Text(
+                        UiText.Literal("Save Module Artifacts").string()
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        UiText.Literal("Keep module artifacts (.module) during module installation")
+                            .string()
+                    )
+                },
+                onToggle = { isEnabled ->
+                    appViewModel.runAsync {
+                        context.filepathDatastore.updateData { preferences ->
+                            preferences.copy(SAVE_MODULE_ARTIFACTS = isEnabled)
+                        }
+                    }
+                },
+                initial = filepathStore.SAVE_MODULE_ARTIFACTS,
             )
         }
     }
