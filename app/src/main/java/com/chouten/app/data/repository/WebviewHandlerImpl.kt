@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 
 class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayload<Action_V2>> @Inject constructor(
@@ -49,6 +50,8 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
         explicitNulls = false
     }
 
+    private var begunInit = false
+
     /**
      * Initializes the webview handler
      * @param context The context
@@ -56,6 +59,7 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
      */
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override suspend fun initialize(context: Context, callback: (BaseResultPayload) -> Unit) {
+        begunInit = true
         if (!::webview.isInitialized) {
             webview = WebView(context)
             webview.settings.javaScriptEnabled = true
@@ -81,11 +85,21 @@ class WebviewHandlerImpl<BaseResultPayload : WebviewHandler.Companion.ActionPayl
     override suspend fun load(
         code: String, payload: WebviewHandler.Companion.WebviewPayload<Action_V2>
     ) {
-        if (!::webview.isInitialized) {
-            throw IllegalStateException("Webview handler is not initialized")
+        if (!begunInit) {
+            throw IllegalStateException("Webview is not initialized")
         }
-        if (!::commonCode.isInitialized) {
-            throw IllegalStateException("Common code is not initialized")
+
+        var sleeps = 0
+        while (!::webview.isInitialized || !::commonCode.isInitialized) {
+            withContext(Dispatchers.IO) {
+                if (sleeps == 10) // 3.3s
+                {
+                    throw TimeoutException("Webview Initialisation timed out")
+                }
+                val delay = sleeps++ * 50
+                Thread.sleep(delay.toLong())
+                log("Waiting ~${delay}ms for Webview to finish initialisation.")
+            }
         }
 
         webview.webViewClient = object : WebViewClient() {
