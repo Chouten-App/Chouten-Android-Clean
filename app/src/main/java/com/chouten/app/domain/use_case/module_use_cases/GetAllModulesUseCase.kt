@@ -14,10 +14,10 @@ class GetAllModulesUseCase @Inject constructor(
      * them against the supported module version.
      * If there is a parsing error or the module is not supported, the module is removed from the list.
      */
-    suspend operator fun invoke() {
+    suspend operator fun invoke(): List<ModuleModel> {
         // Modules which cannot be parsed or are not supported
         // are removed from the list by returning null to the mapNotNull function
-        moduleRepository.getModules().firstOrNull()?.mapNotNull { module ->
+        return moduleRepository.getModules().firstOrNull()?.mapNotNull { module ->
             try {
                 // Match the module against the constraints of the current version of the app
                 // If the module matches, return the module directory uri

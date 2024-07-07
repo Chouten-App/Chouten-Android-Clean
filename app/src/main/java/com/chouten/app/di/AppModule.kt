@@ -177,7 +177,7 @@ object AppModule {
 
         return ModuleUseCases(
             getModuleUris = GetAllModulesUseCase(
-                moduleRepository, app.applicationContext, log
+                moduleRepository, log
             ), addModule = AddModuleUseCase(
                 app.applicationContext,
                 moduleRepository,
@@ -185,11 +185,8 @@ object AppModule {
                 log,
                 moduleJsonParser
             ), getModuleDir = moduleDirUsecase, removeModule = RemoveModuleUseCase(
-                app.applicationContext,
                 moduleRepository,
-                moduleJsonParser,
-                log,
-            )
+                )
         )
     }
 }

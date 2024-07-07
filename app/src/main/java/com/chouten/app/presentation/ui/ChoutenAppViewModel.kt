@@ -129,34 +129,6 @@ class ChoutenAppViewModel @Inject constructor(
 
     /**
      * Remove module from the app and delete the module folder.
-     * Completely re-emits the list of modules by re-scanning the module directory.
-     * @param uri The content uri of the module to remove.
-     * expects uri to be a valid document uri.
-     * @param showSnackbar A lambda to show a snackbar with the given [SnackbarModel].
-     */
-    suspend fun removeModule(uri: Uri, showSnackbar: (SnackbarModel) -> Unit) {
-        withContext(Dispatchers.IO) {
-            try {
-                moduleUseCases.removeModule(uri)
-                _modules.emit(moduleUseCases.getModuleUris())
-                // TODO: Update the module preferences to remove the module from the
-                // auto-update list (if it is in the list) and make sure it is
-                // not the current module.
-            } catch (e: Exception) {
-                e.printStackTrace()
-                showSnackbar(
-                    SnackbarModel(
-                        message = e.message ?: "Unknown error",
-                        actionLabel = "Dismiss",
-                        isError = true
-                    )
-                )
-            }
-        }
-    }
-
-    /**
-     * Remove module from the app and delete the module folder.
      * Does not re-emit the list of modules; filters the current list of modules to remove
      * the given [ModuleModel].
      * @param model The [ModuleModel] of the module to remove.
