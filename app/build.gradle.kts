@@ -144,6 +144,10 @@ dependencies {
     compileOnly(libs.auto.service.annotations)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 kapt {
     correctErrorTypes = true
 }

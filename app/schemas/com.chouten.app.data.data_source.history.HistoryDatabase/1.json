@@ -1,0 +1,70 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "5bf6406b093908b2cee932535088fae6",
+    "entities": [
+      {
+        "tableName": "HistoryEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryUrl` TEXT NOT NULL, `entryTitle` TEXT NOT NULL, `entryImage` TEXT NOT NULL, `entryDiscriminator` TEXT NOT NULL, `entryProgress` INTEGER NOT NULL, `entryDuration` INTEGER NOT NULL, `entryLastUpdated` INTEGER NOT NULL, PRIMARY KEY(`entryUrl`))",
+        "fields": [
+          {
+            "fieldPath": "entryUrl",
+            "columnName": "entryUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryTitle",
+            "columnName": "entryTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryImage",
+            "columnName": "entryImage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryDiscriminator",
+            "columnName": "entryDiscriminator",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryProgress",
+            "columnName": "entryProgress",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryDuration",
+            "columnName": "entryDuration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryLastUpdated",
+            "columnName": "entryLastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "entryUrl"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5bf6406b093908b2cee932535088fae6')"
+    ]
+  }
+}
