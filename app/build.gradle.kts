@@ -35,8 +35,8 @@ android {
         applicationId = "com.chouten.app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 13
-        versionName = "0.3.3"
+        versionCode = 14
+        versionName = "0.3.4"
         buildConfigField("String", "WEBHOOK_URL", "\"${properties.getProperty("bug_webhook")}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
