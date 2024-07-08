@@ -329,15 +329,21 @@ class AddModuleUseCase @Inject constructor(
                 }
 
                 val childDocumentsUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                    it, DocumentsContract.getTreeDocumentId(
+                    it,
+                    DocumentsContract.getTreeDocumentId(DocumentsContract.buildChildDocumentsUriUsingTree(
+                        it, DocumentsContract.getTreeDocumentId(it)
+                    ).findDocument(contentResolver, "Modules") ?: run {
+                        // We have not found the Modules directory, so we need to create it
+                        val _moduleDirUri = DocumentsContract.createDocument(
+                            contentResolver, DocumentsContract.buildChildDocumentsUriUsingTree(
+                                it, DocumentsContract.getTreeDocumentId(it)
+                            ), DocumentsContract.Document.MIME_TYPE_DIR, "Modules"
+                        ) ?: throw IOException("Could not create module directory")
                         DocumentsContract.buildChildDocumentsUriUsingTree(
-                            it, DocumentsContract.getTreeDocumentId(it)
-                        ).findDocument(contentResolver, "Modules") ?: safeException(
-                            IOException(
-                                "Could not find Module Dir at $it"
-                            ), destinationDir
-                        )
-                    )
+                            it, DocumentsContract.getTreeDocumentId(_moduleDirUri)
+                        )?.findDocument(contentResolver, "Modules")
+                            ?: throw IOException("Could not create Modules folder!")
+                    })
                 )
 
                 val displayName = "${module.name}_v${module.version}_${module.id}.module"
