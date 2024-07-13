@@ -31,16 +31,4 @@ class TypeConverters {
 
     @TypeConverter
     fun stringToVersion(value: String): Version = Json.decodeFromString(value)
-
-    @TypeConverter
-    fun metadataToString(value: ModuleModel.ModuleMetadata): String = Json.encodeToString(value)
-
-    @TypeConverter
-    fun stringToMetadata(value: String): ModuleModel.ModuleMetadata = Json.decodeFromString(value)
-
-    @TypeConverter
-    fun moduleCodeToString(value: ModuleModel.ModuleCode): String = Json.encodeToString(value)
-
-    @TypeConverter
-    fun stringToModuleCode(value: String): ModuleModel.ModuleCode = Json.decodeFromString(value)
 }

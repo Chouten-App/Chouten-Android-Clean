@@ -251,7 +251,7 @@ class WatchViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 code = moduleUseCases.getModuleUris().find {
                     it.id == application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-                }?.code?.mediaConsume?.getOrNull(0)?.code ?: run {
+                }?.code ?: run {
                     logUseCases.insertLog(
                         LogEntry(
                             entryHeader = "Failure Loading Media",

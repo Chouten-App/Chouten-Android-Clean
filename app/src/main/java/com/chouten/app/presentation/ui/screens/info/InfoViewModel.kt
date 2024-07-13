@@ -283,11 +283,12 @@ class InfoViewModel @Inject constructor(
                 val module = moduleUseCases.getModuleUris().find {
                     it.id == moduleId
                 } ?: return@withContext ""
-                code = module.code?.info?.getOrNull(0)?.code ?: run {
-                    log(content = "Failed to find info code for ${module.name}")
-                    return@run ""
+                return@withContext module.code ?: run {
+                    viewModelScope.launch {
+                        logUseCases.insertLog(LogEntry(entryContent = "Failed to find info code for ${module.name}"))
+                    }
+                    ""
                 }
-                code
             }
         } else code
     }

@@ -1,11 +1,15 @@
 package com.chouten.app.domain.model
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 
 @Serializable
@@ -17,20 +21,13 @@ data class ModuleModel(
      * and should be unique; however, this is not enforced
      * as the app does generate the id itself.
      */
-    @PrimaryKey
-    val id: String,
+    @PrimaryKey val id: String,
 
     /**
      * The type of module.
-     * Expected values are "source" or "meta".
+     * Expected values are 0 (ModuleType.SOURCE) or 1 (ModuleType.META).
      */
-    @SerialName("moduleType") val type: ModuleType,
-
-    /**
-     * The data type of the module.
-     * Expected values are "Video", "Book", or "Text".
-     */
-    @SerialName("type") val dataType: ModuleDataType,
+    @SerialName("type") val type: ModuleType,
 
     /**
      * Subtypes of the module. These are used to identify
@@ -42,10 +39,27 @@ data class ModuleModel(
     val subtypes: List<String>,
 
     /**
+     * The author of the module.
+     */
+    val author: String,
+
+    /**
      * The name of the module.
      * This is used to identify the module in the app.
      */
     val name: String,
+
+    /**
+     * The description of the module
+     */
+    val description: String,
+
+    /**
+     * The icon for the module.
+     * This is a bitmap encoded as a byte array.
+     * Must be named using icon.(png|jpg|jpeg) in the root of the module directory.
+     */
+    var icon: ByteArray? = null,
 
     /**
      * The version of the module.
@@ -58,134 +72,48 @@ data class ModuleModel(
      * This is used to determine if a module is compatible
      * with the current version of the app.
      */
-    val formatVersion: Int,
+    val formatVersion: Int? = 3,
 
     /**
      * The URL queried to check for updates to the module.
      */
-    val updateUrl: String,
-
-    /**
-     * The metadata for the module
-     * This is used to provide information about the module
-     * such as the author and icon.
-     * NOTE: The name of this within the JSON is "general".
-     */
-    @SerialName("general") val metadata: ModuleMetadata,
+    val updateUrl: String? = null,
 
     /**
      * The source code for the module.
      */
-    var code: ModuleCode? = null,
+    var code: String? = null,
 ) {
-    @Serializable
-    data class ModuleMetadata(
-        /**
-         * The author of the module.
-         */
-        val author: String,
-
-        /**
-         * The icon for the module.
-         * This is a bitmap encoded as a byte array.
-         * Must be named using icon.(png|jpg|jpeg) in the root of the module directory.
-         */
-        var icon: ByteArray? = null,
-
-        /**
-         * The languages which the module supports.
-         * Languages are identified by their ISO 639-1 code.
-         * For example, "en" for English (not "en-US"/"en-GB").
-         */
-        val lang: List<String>,
-
-        /**
-         * The background colour used for the module.
-         * This is a hex colour code, including the #.
-         * For example, #FFFFFF for white.
-         */
-        @SerialName("bgColor") val backgroundColor: String,
-
-        /**
-         * The foreground colour used for the module.
-         * This is a hex colour code, including the #.
-         * For example, #000000 for black.
-         */
-        @SerialName("fgColor") val foregroundColor: String,
-    )
-
-    @Serializable
-    data class ModuleCode(
-        /**
-         * The code for the home page of the module.
-         */
-        val home: List<ModuleCodeblock> = listOf(),
-
-        /**
-         * The code for the search page of the module.
-         */
-        val search: List<ModuleCodeblock> = listOf(),
-
-        /**
-         * The code for the info page of the module.
-         */
-        val info: List<ModuleCodeblock> = listOf(),
-
-        /**
-         *  The code for the media consume page of the module.
-         */
-        val mediaConsume: List<ModuleCodeblock> = listOf(),
-    ) {
-        @Serializable
-        data class ModuleCodeblock(
-            /**
-             * The JavaScript imports for the codeblock.
-             * These are imported from within the codeblock itself
-             * via an event `loadScript()`
-             */
-            val imports: List<String>? = listOf(),
-
-            /**
-             * The code for the codeblock.
-             */
-            var code: String,
-        )
-    }
-
-    @Serializable
+    @Serializable(with = ModuleTypeSerializer::class)
     enum class ModuleType {
         /**
          * A module which provides data.
          */
-        @SerialName("source")
         SOURCE,
 
         /**
          * A module which provides metadata for other modules (e.g search mappings).
          */
-        @SerialName("meta")
         META,
     }
 
-    @Serializable
-    enum class ModuleDataType {
-        /**
-         * A module which provides video data.
-         */
-        @SerialName("Video")
-        VIDEO,
+    class ModuleTypeSerializer : KSerializer<ModuleType> {
+        override val descriptor: SerialDescriptor
+            get() = PrimitiveSerialDescriptor("moduleType", PrimitiveKind.INT)
 
-        /**
-         * A module which provides raw text data.
-         */
-        @SerialName("Text")
-        TEXT,
+        override fun deserialize(decoder: Decoder): ModuleType {
+            return decoder.decodeInt().let {
+                when (it) {
+                    0 -> ModuleType.SOURCE
+                    1 -> ModuleType.META
+                    else -> throw IllegalArgumentException("ModuleType Enum has no corresponding field with ordinal value $it")
+                }
+            }
+        }
 
-        /**
-         * A module which provides book data.
-         */
-        @SerialName("Book")
-        BOOK,
+        override fun serialize(encoder: Encoder, value: ModuleType) {
+            encoder.encodeInt(value.ordinal)
+        }
     }
 
     /**
@@ -200,7 +128,7 @@ data class ModuleModel(
          * with the current version of the app.
          * The value is inclusive (e.g if 2, 2 is the minimum working version).
          */
-        const val MIN_FORMAT_VERSION = 2
+        const val MIN_FORMAT_VERSION = 3
 
         /**
          * The maximum format version supported by the app.
@@ -208,15 +136,6 @@ data class ModuleModel(
          * with the current version of the app.
          * The value is inclusive (e.g if 3, 3 is the maximum working version).
          */
-        const val MAX_FORMAT_VERSION = 2
-
-        /**
-         * Convert the ByteArray icon to a Bitmap.
-         * @return The icon as a Bitmap.
-         */
-        fun ModuleMetadata.getIcon(): Bitmap? {
-            // TODO: Use a default icon if the icon is null
-            return icon?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
+        const val MAX_FORMAT_VERSION = 3
     }
 }

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -32,11 +33,11 @@ import javax.inject.Inject
 @Parcelize
 data class SearchResult(
     val url: String,
-    val img: String,
+    val poster: String,
     val title: String,
-    val indicatorText: String?,
-    val currentCount: Int?,
-    val totalCount: Int?,
+    val indicator: String? = "",
+    @SerialName("current") val currentCount: Int? = null,
+    @SerialName("total") val totalCount: Int? = null,
 ) : Parcelable
 
 @HiltViewModel
@@ -133,7 +134,7 @@ class SearchViewModel @Inject constructor(
             val module = moduleUseCases.getModuleUris().find {
                 it.id == moduleId
             } ?: return@withContext
-            code = module.code?.search?.getOrNull(0)?.code ?: run {
+            code = module.code ?: run {
                 logUseCases.insertLog(LogEntry(entryContent = "Failed to find search code for ${module.name}"))
                 return@run ""
             }

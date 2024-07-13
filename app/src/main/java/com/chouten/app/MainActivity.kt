@@ -80,16 +80,29 @@ class MainActivity : ComponentActivity() {
                                             )
                                         )
                                     )
-                                    moduleUseCases.addModule(updateUrl.toUri()) { event ->
-                                        when (event) {
-                                            is ModuleInstallEvent.PARSED -> {
-                                                (event.module.version <= module.version).also { res ->
-                                                    if (!res) {
-                                                        appState.viewModel.runAsync {
-                                                            logUseCases.insertLog(
-                                                                LogEntry(
-                                                                    entryHeader = getString(R.string.module_auto_update),
-                                                                    entryContent = getString(
+                                    updateUrl?.let {
+                                        moduleUseCases.addModule(it.toUri()) { event ->
+                                            when (event) {
+                                                is ModuleInstallEvent.PARSED -> {
+                                                    (event.module.version <= module.version).also { res ->
+                                                        if (!res) {
+                                                            appState.viewModel.runAsync {
+                                                                logUseCases.insertLog(
+                                                                    LogEntry(
+                                                                        entryHeader = getString(R.string.module_auto_update),
+                                                                        entryContent = getString(
+                                                                            R.string.module_autoupdate_message,
+                                                                            module.name,
+                                                                            module.version,
+                                                                            event.module.version
+                                                                        )
+                                                                    )
+                                                                )
+                                                            }
+                                                            appState.showSnackbar(
+                                                                SnackbarModel(
+                                                                    isError = false,
+                                                                    message = getString(
                                                                         R.string.module_autoupdate_message,
                                                                         module.name,
                                                                         module.version,
@@ -98,23 +111,12 @@ class MainActivity : ComponentActivity() {
                                                                 )
                                                             )
                                                         }
-                                                        appState.showSnackbar(
-                                                            SnackbarModel(
-                                                                isError = false,
-                                                                message = getString(
-                                                                    R.string.module_autoupdate_message,
-                                                                    module.name,
-                                                                    module.version,
-                                                                    event.module.version
-                                                                )
-                                                            )
-                                                        )
                                                     }
                                                 }
-                                            }
 
-                                            else -> {
-                                                false
+                                                else -> {
+                                                    false
+                                                }
                                             }
                                         }
                                     }

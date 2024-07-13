@@ -139,7 +139,8 @@ object AppModule {
     @Singleton
     @Provides
     fun provideModuledatabase(app: Application): ModuleDatabase =
-        Room.databaseBuilder(app, ModuleDatabase::class.java, ModuleDatabase.DATABASE_NAME).build()
+        Room.databaseBuilder(app, ModuleDatabase::class.java, ModuleDatabase.DATABASE_NAME)
+            .fallbackToDestructiveMigration().build()
 
     @Singleton
     @Provides

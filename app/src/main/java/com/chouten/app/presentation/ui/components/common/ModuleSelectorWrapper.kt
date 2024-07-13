@@ -245,40 +245,7 @@ fun ModuleSelector(
 fun ModuleItem(
     modifier: Modifier = Modifier, module: ModuleModel, onModuleSelected: (ModuleModel) -> Unit = {}
 ) {
-    // Get the appearance preferences from the datastore
-    // so we can determine if the user wants to use the module's custom
-    // colors
-    val appearancePreferences by LocalContext.current.appearanceDatastore.data.collectAsState(
-        null
-    )
-
-    // Convert the hex color strings to Color objects
-    // e.g #FFFFFFF => 0xFFFFFFFF
-    // If the color string is invalid, use the default color
-    // for the ListItem
-
-    val surfaceColor = try {
-        Color("FF${module.metadata.backgroundColor.removePrefix("#")}".toLong(16))
-    } catch (e: Exception) {
-        e.printStackTrace()
-        ListItemDefaults.containerColor
-    }
-
-    val onSurfaceColor = try {
-        Color("FF${module.metadata.foregroundColor.removePrefix("#")}".toLong(16))
-    } catch (e: Exception) {
-        e.printStackTrace()
-        ListItemDefaults.contentColor
-    }
-
-    // If the user wants to use the module's custom colors,
-    // use the module's colors for the ListItem
-    // Otherwise, use the default colors
-    val colors = if (appearancePreferences?.useModuleColors == true) ListItemDefaults.colors(
-        containerColor = surfaceColor,
-        headlineColor = onSurfaceColor,
-        supportingColor = onSurfaceColor,
-    ) else ListItemDefaults.colors()
+    val colors = ListItemDefaults.colors()
 
     ListItem(colors = colors,
         headlineContent = { Text(module.name, fontWeight = FontWeight.SemiBold) },
@@ -293,7 +260,7 @@ fun ModuleItem(
             },
         leadingContent = {
             AsyncImage(
-                model = module.metadata.icon,
+                model = module.icon,
                 contentDescription = "${module.name} icon",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
@@ -303,7 +270,7 @@ fun ModuleItem(
         },
         supportingContent = {
             Text(
-                text = "${module.metadata.author} v${module.version}",
+                text = "${module.author} v${module.version}",
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

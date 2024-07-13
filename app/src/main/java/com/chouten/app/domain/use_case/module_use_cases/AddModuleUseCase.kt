@@ -24,6 +24,7 @@ import okio.sink
 import okio.source
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileFilter
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.UUID
@@ -47,11 +48,6 @@ class AddModuleUseCase @Inject constructor(
     private val log: suspend (String) -> Unit,
     private val jsonParser: suspend (String) -> ModuleModel
 ) {
-
-    enum class ModuleDirectories {
-        HOME, SEARCH, INFO, MEDIA,
-    }
-
     /**
      * Adds a module to the module folder
      * @param uri The URI of the module (either a local file or a remote resource)
@@ -195,7 +191,7 @@ class AddModuleUseCase @Inject constructor(
             }
 
             // Check if the module format version is supported
-            if (module.formatVersion < ModuleModel.MIN_FORMAT_VERSION) {
+            if ((module.formatVersion ?: -1) < ModuleModel.MIN_FORMAT_VERSION) {
                 log(
                     """
                 Unsupported module format version ${module.formatVersion} for ${module.name}
@@ -206,7 +202,7 @@ class AddModuleUseCase @Inject constructor(
                     OutOfDateModuleException("${module.name} is out of date (v${module.formatVersion}). Please update the module"),
                     destinationDir
                 )
-            } else if (module.formatVersion > ModuleModel.MAX_FORMAT_VERSION) {
+            } else if ((module.formatVersion ?: Int.MAX_VALUE) > ModuleModel.MAX_FORMAT_VERSION) {
                 log(
                     """
                 Unsupported module format version ${module.formatVersion} for ${module.name}
@@ -244,78 +240,32 @@ class AddModuleUseCase @Inject constructor(
                 }
             }
 
-            val dirFiles = destinationDir.listFiles()
-                ?: safeException(IOException("Could not list destination files."), destinationDir)
-
-            ModuleDirectories.entries.forEach { dir ->
-                dirFiles.find { it.name.toUpperCase(Locale.current) == dir.name }?.let {
-                    return@let it.resolve("code.js").let code@{ code ->
-                        log("Adding code for ${code.parentFile?.name}.")
-                        val moduleCode = module.code ?: ModuleModel.ModuleCode()
-                        when (dir) {
-                            ModuleDirectories.HOME -> {
-                                module = module.copy(
-                                    code = moduleCode.copy(
-                                        home = listOf(
-                                            ModuleModel.ModuleCode.ModuleCodeblock(
-                                                code = code.readLines().joinToString("\n")
-                                            )
-                                        )
-                                    )
-                                )
-                            }
-
-                            ModuleDirectories.SEARCH -> {
-                                module = module.copy(
-                                    code = moduleCode.copy(
-                                        search = listOf(
-                                            ModuleModel.ModuleCode.ModuleCodeblock(
-                                                code = code.readLines().joinToString("\n")
-                                            )
-                                        )
-                                    )
-                                )
-                            }
-
-                            ModuleDirectories.INFO -> {
-                                module = module.copy(
-                                    code = moduleCode.copy(
-                                        info = listOf(
-                                            ModuleModel.ModuleCode.ModuleCodeblock(
-                                                code = code.readLines().joinToString("\n")
-                                            )
-                                        )
-                                    )
-                                )
-                            }
-
-                            ModuleDirectories.MEDIA -> {
-                                module = module.copy(
-                                    code = module.code?.copy(
-                                        mediaConsume = listOf(
-                                            ModuleModel.ModuleCode.ModuleCodeblock(
-                                                code = code.readLines().joinToString("\n")
-                                            )
-                                        )
-                                    )
-                                )
-                            }
-                        }
-                    }
-                } ?: log("${module.name} does not contain code for $dir")
+            destinationDir.resolve("code.js").apply {
+                if (!exists()) {
+                    log("${module.name} does not contain code.js")
+                    safeException(
+                        FileNotFoundException("${module.name} does not contain code.js"),
+                        destinationDir
+                    )
+                }
+                log("Adding code for ${module.name}.")
+                module.code = bufferedReader().readLines().joinToString("\n")
             }
 
-            destinationDir.resolve("icon.png").apply {
+            val formats = arrayOf("png", "jpg", "jpeg")
+            destinationDir.listFiles(FileFilter {
+                "icon.(png|jpg|jpeg)".toRegex().matches(it.name)
+            })?.firstOrNull()?.apply {
                 if (!exists()) {
-                    log("${module.name} does not contain an icon in PNG format")
+                    log("${module.name} does not contain an icon in an accepted format (${formats})")
                     return@apply
                 }
 
                 val os = ByteArrayOutputStream()
                 BitmapFactory.decodeFile(this@apply.absolutePath)?.apply {
                     compress(Bitmap.CompressFormat.PNG, 80, os)
-                } ?: log("Could not parse icon.png")
-                module = module.copy(metadata = module.metadata.copy(icon = os.toByteArray()))
+                } ?: log("Could not parse $name")
+                module.icon = os.toByteArray()
             }
 
             val preferences = mContext.filepathDatastore.data.firstOrNull()

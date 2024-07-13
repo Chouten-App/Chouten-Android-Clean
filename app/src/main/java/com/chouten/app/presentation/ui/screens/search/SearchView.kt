@@ -297,7 +297,7 @@ fun SearchResultItem(
                 .heightIn(100.dp, 160.dp)
                 .clip(MaterialTheme.shapes.small)
         ) {
-            item.indicatorText?.let {
+            item.indicator?.let {
                 if (it.isBlank()) return@let
                 Text(
                     it,
@@ -317,7 +317,7 @@ fun SearchResultItem(
                 )
             }
             AsyncImage(
-                model = item.img,
+                model = item.poster,
                 contentDescription = item.title,
                 modifier = Modifier
                     .fillMaxSize()
@@ -335,29 +335,31 @@ fun SearchResultItem(
                 .fillMaxWidth(0.9F)
                 .wrapContentWidth(Alignment.Start)
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(0.9F)
-                .wrapContentWidth(Alignment.End)
-        ) {
-            Text(
-                text = item.currentCount?.toString() ?: "~",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MaterialTheme.colorScheme.secondary
-                ),
-            )
-            Text(
-                " | ",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MaterialTheme.colorScheme.secondary
-                ),
-            )
-            Text(
-                text = item.totalCount?.toString() ?: "~",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MaterialTheme.colorScheme.secondary
-                ),
-            )
+        item.currentCount?.let {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.9F)
+                    .wrapContentWidth(Alignment.End)
+            ) {
+                Text(
+                    text = item.currentCount?.toString() ?: "~",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.secondary
+                    ),
+                )
+                Text(
+                    " | ",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.secondary
+                    ),
+                )
+                Text(
+                    text = item.totalCount?.toString() ?: "~",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.secondary
+                    ),
+                )
+            }
         }
     }
 }

@@ -47,4 +47,4 @@ class GetAllModulesUseCase @Inject constructor(
  * @return true if the module is supported, false otherwise
  */
 private fun moduleMatcher(metadata: ModuleModel) =
-    metadata.formatVersion >= ModuleModel.MIN_FORMAT_VERSION
+    metadata.formatVersion?.let { it >= ModuleModel.MIN_FORMAT_VERSION } ?: false
