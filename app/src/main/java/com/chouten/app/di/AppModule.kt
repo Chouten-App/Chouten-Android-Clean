@@ -123,7 +123,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideModuleRepository(app: Application, httpClient: Requests, moduleDatabase: ModuleDatabase): ModuleRepository {
+    fun provideModuleRepository(
+        app: Application, httpClient: Requests, moduleDatabase: ModuleDatabase
+    ): ModuleRepository {
         val moduleDirGetter: suspend (Uri) -> Uri = { uri: Uri ->
             try {
                 GetModuleDirUseCase(
@@ -180,14 +182,10 @@ object AppModule {
             getModuleUris = GetAllModulesUseCase(
                 moduleRepository, log
             ), addModule = AddModuleUseCase(
-                app.applicationContext,
-                moduleRepository,
-                httpClient,
-                log,
-                moduleJsonParser
+                app.applicationContext, moduleRepository, httpClient, log, moduleJsonParser
             ), getModuleDir = moduleDirUsecase, removeModule = RemoveModuleUseCase(
                 moduleRepository,
-                )
+            )
         )
     }
 }

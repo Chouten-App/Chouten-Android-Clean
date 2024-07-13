@@ -2,22 +2,24 @@ package com.chouten.app.presentation.ui.screens.search
 
 import android.app.Application
 import android.os.Parcelable
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chouten.app.R
 import com.chouten.app.common.Resource
+import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.LogEntry
-import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.proto.moduleDatastore
-import com.chouten.app.domain.repository.WebviewHandler
+import com.chouten.app.domain.repository.ModuleEngine
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
+import com.lagradost.nicehttp.Requests
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -27,6 +29,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 @Serializable
@@ -44,7 +47,7 @@ data class SearchResult(
 class SearchViewModel @Inject constructor(
     val application: Application,
     val moduleUseCases: ModuleUseCases,
-    val webviewHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<SearchResult>>>,
+    val engine: ModuleEngine,
     private val logUseCases: LogUseCases,
     val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -79,7 +82,7 @@ class SearchViewModel @Inject constructor(
                     _searchQuery.debounce(500).distinctUntilChanged().collectLatest {
                         savedStateHandle["searchQuery"] = it
                         if (it.isBlank()) {
-                            _searchResults.emit(Resource.Uninitialized())
+                            searchResults.emit(Resource.Uninitialized())
                         } else {
                             _searchQuery.emit(it)
                             search()
@@ -89,54 +92,77 @@ class SearchViewModel @Inject constructor(
             }
         }
 
-    private val _searchResults =
-        MutableStateFlow<Resource<List<SearchResult>>>(Resource.Uninitialized())
-    val searchResults: StateFlow<Resource<List<SearchResult>>> = _searchResults
+    private val searchFlow = MutableStateFlow("[]")
+    val searchResults: MutableStateFlow<Resource<List<SearchResult>>> =
+        MutableStateFlow(Resource.Uninitialized())
 
     init {
         viewModelScope.launch {
             reloadCode()
         }
+        engine.scope = viewModelScope;
+        engine.registerObservable("search", searchFlow)
+        engine.registerInterceptor("logging") {
+            viewModelScope.launch {
+                logUseCases.insertLog(
+                    LogEntry(
+                        entryContent = it.toString()
+                    )
+                )
+            }
+        }
+
         viewModelScope.launch {
-            webviewHandler.logFn = { message ->
-                viewModelScope.launch {
-                    logUseCases.insertLog(
-                        LogEntry(
-                            entryHeader = "Webview Log", entryContent = message
+            searchFlow.collectLatest {
+                try {
+                    searchResults.emit(Resource.Success(Json.decodeFromString<List<SearchResult>>(it)))
+                } catch (e: Exception) {
+                    searchResults.emit(
+                        Resource.Error(
+                            UiText.StringRes(R.string.search_error).string(application)
                         )
                     )
-                }
-            }
-
-            webviewHandler.initialize(application) { res ->
-                if (res.action == Payloads_V2.Action_V2.ERROR) {
-                    viewModelScope.launch {
-                        _searchResults.emit(
-                            Resource.Error(
-                                message = "Failed to search for $searchQuery", data = null
-                            )
-                        )
-                    }
-                    return@initialize
-                }
-                viewModelScope.launch {
-                    _searchResults.emit(Resource.Success(res.result.result))
                 }
             }
         }
     }
 
+    private fun getSearchResult(query: String, page: Int? = 0) {
+        engine.evaluateJavascript(
+            """
+                // Not doing this makes the defaultSource not load ?? Maybe something to do with giving
+                // the WebView time to parse the JS?
+                if (defaultSource == undefined || typeof defaultSource["search"] != "function") {
+                    console.log("Could not load Search Function on `defaultSource`!");
+                } else {
+                    defaultSource.search('${query}', ${page}).then(res => {
+                        console.log("We got our result. Sending payload")
+                        if (Native["sendResult"] == null || Native["sendResult"] == undefined) {
+                            console.log("sendResult not found");
+                        }
+                        Native.sendResult(JSON.stringify({key: "search", value: JSON.stringify(res.results)}));
+                    });
+                }
+        """.trimIndent()
+        ) {}
+    }
+
     private suspend fun reloadCode() {
         withContext(Dispatchers.IO) {
-            val moduleId =
-                application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-                    ?: return@withContext
+            val moduleId = application.moduleDatastore.data.firstOrNull()?.selectedModuleId?.let {
+                it.ifBlank { return@let null }
+            } ?: return@withContext
             val module = moduleUseCases.getModuleUris().find {
                 it.id == moduleId
             } ?: return@withContext
             code = module.code ?: run {
                 logUseCases.insertLog(LogEntry(entryContent = "Failed to find search code for ${module.name}"))
                 return@run ""
+            }
+            withContext(Dispatchers.Main) {
+                engine.load(
+                    code
+                )
             }
         }
     }
@@ -146,24 +172,19 @@ class SearchViewModel @Inject constructor(
      */
     suspend fun search() {
         if (searchQuery.isBlank()) {
-            _searchResults.emit(Resource.Uninitialized())
+            searchResults.emit(Resource.Uninitialized())
             return
         }
 
         savedStateHandle["lastSearchQuery"] =
             savedStateHandle.getStateFlow("searchQuery", "").firstOrNull()
-        _searchResults.emit(Resource.Loading(null))
+        searchResults.emit(Resource.Loading(null))
 
         if (lastUsedModule != application.moduleDatastore.data.firstOrNull()?.selectedModuleId) {
             reloadCode()
         }
 
-        webviewHandler.load(
-            code,
-            WebviewHandler.Companion.WebviewPayload(
-                query = searchQuery, action = Payloads_V2.Action_V2.SEARCH
-            )
-        )
+        getSearchResult(_searchQuery.firstOrNull() ?: "")
         lastUsedModule = application.moduleDatastore.data.firstOrNull()?.selectedModuleId ?: ""
     }
 }
