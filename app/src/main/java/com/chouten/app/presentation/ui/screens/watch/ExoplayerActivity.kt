@@ -133,7 +133,7 @@ class ExoplayerActivity : ComponentActivity() {
      */
     private var isInitialized = false
 
-    private val media: List<InfoResult.MediaListItem> by lazy {
+    private val media: List<InfoResult.MediaList> by lazy {
         getLazyFile(watchBundle.mediaUuid, "media")
     }
 
@@ -307,7 +307,7 @@ class ExoplayerActivity : ComponentActivity() {
 
                 val mediaTitle = remember(watchBundle.selectedMediaIndex) {
                     // TODO: Handle server changing
-                    media.getOrNull(0)?.list?.getOrNull(watchBundle.selectedMediaIndex)?.title
+                    media.getOrNull(0)?.pagination?.firstOrNull()?.items?.getOrNull(watchBundle.selectedMediaIndex)?.title
                         ?: UiText.StringRes(R.string.no_title_found).string(this)
                 }
 
@@ -408,7 +408,7 @@ class ExoplayerActivity : ComponentActivity() {
                                 exoplayer.seekTo(position + (10 * 1000))
                             },
                             onNextEpisode = {
-                                if (selectedMediaIndex < ((media.getOrNull(0)?.list?.size)
+                                if (selectedMediaIndex < ((media.getOrNull(0)?.pagination?.firstOrNull()?.items?.size)
                                         ?: 0) - 1
                                 ) {
 //                                    watchBundle = watchBundle.copy(

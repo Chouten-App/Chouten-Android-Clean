@@ -34,17 +34,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
@@ -74,7 +69,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -86,8 +80,6 @@ import com.chouten.app.presentation.ui.screens.destinations.WatchViewDestination
 import com.chouten.app.presentation.ui.screens.watch.WatchBundle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import java.net.URLDecoder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,40 +96,37 @@ fun InfoView(
     infoViewModel: InfoViewModel = hiltViewModel()
 ) {
     val infoResults by infoViewModel.infoResults.collectAsState()
-    val episodeList by infoViewModel.episodeList.collectAsState()
+    val episodeList by infoViewModel.episodeResults.collectAsState()
 
-    val selectedSeason by infoViewModel.selectedSeason.collectAsState()
+//    val selectedSeason by infoViewModel.selectedSeason.collectAsState()
     var lastUrl by rememberSaveable { mutableStateOf(url) }
-    val switchValue by infoViewModel.switchValue.collectAsState()
-    val switchConfig by infoViewModel.switchConfig.collectAsState()
 
-    LaunchedEffect(infoResults, selectedSeason, switchValue) {
+    LaunchedEffect(infoResults /*, selectedSeason */) {
         when (infoResults) {
             is Resource.Success -> {
-                val urls = infoResults.data?.epListURLs ?: listOf()
-                if (switchConfig?.options?.size == 2 && infoViewModel.cachedSwitchResults.firstOrNull()?.size == 2) {
-                    // We will force the viewmodel to emit the cached results
-                    infoViewModel.toggleSwitch(switchValue)
-                    return@LaunchedEffect
-                }
+//                val urls = infoResults.data?.epListURLs ?: listOf()
 
-                selectedSeason?.let {
-                    if ((lastUrl != it.url) && (infoViewModel.getMediaList().find { media ->
-                            media.title == it.name
-                        } == null)
-                    ) {
-                        infoViewModel.getInfo(title, it.url)
-                        lastUrl = it.url
-                    } else {
-                        // Make sure that we don't reload the episodes if we already have them
-                        if (episodeList is Resource.Uninitialized)
-                            infoViewModel.getEpisodes(urls, 0)
-                    }
-                } ?: infoViewModel.getEpisodes(urls, 0)
+//                selectedSeason?.let {
+//                    if ((lastUrl != it.url) && (infoViewModel.getMediaList().find { media ->
+//                            media.title == it.name
+//                        } == null)
+//                    ) {
+//                        infoViewModel.getInfo(title, it.url)
+//                        lastUrl = it.url
+//                    } else {
+//                        // Make sure that we don't reload the episodes if we already have them
+//                        if (episodeList is Resource.Uninitialized)
+//                            infoViewModel.getEpisodes(urls, 0)
+//                    }
+//                } ?: infoViewModel.getEpisodes(urls, 0)
+
+                infoResults.data?.seasons?.firstOrNull()?.let {
+                    infoViewModel.getEpisodes(it)
+                }
             }
 
             is Resource.Uninitialized -> {
-                infoViewModel.getInfo(title, selectedSeason?.url ?: url)
+                infoViewModel.getInfo(title,  /* selectedSeason?.url ?: */ url)
             }
 
             is Resource.Error -> {
@@ -154,13 +143,13 @@ fun InfoView(
         }
     }
 
-    LaunchedEffect(episodeList) {
-        if (infoViewModel.paginatedAll && infoViewModel.seasonCount <= 1 && (switchConfig?.options?.size == 2 && infoViewModel.cachedSwitchResults.firstOrNull()?.size == 2)) {
-            // We have no further episodes to load
-            // so don't need the webview anymore.
-            infoViewModel.epListHandler.destroy()
-        }
-    }
+//    LaunchedEffect(episodeList) {
+//        if (infoViewModel.paginatedAll && infoViewModel.seasonCount <= 1 && (switchConfig?.options?.size == 2 && infoViewModel.cachedSwitchResults.firstOrNull()?.size == 2)) {
+//            // We have no further episodes to load
+//            // so don't need the webview anymore.
+//            infoViewModel.epListHandler.destroy()
+//        }
+//    }
 
     val scrollState = rememberScrollState()
     val gradient = Brush.verticalGradient(
@@ -261,7 +250,7 @@ fun InfoView(
                                 verticalArrangement = Arrangement.spacedBy(0.dp)
                             ) {
                                 Text(
-                                    infoResults.data?.altTitles?.firstOrNull() ?: "",
+                                    infoResults.data?.titles?.secondary ?: "",
                                     color = MaterialTheme.colorScheme.onSurface.copy(
                                         0.7F
                                     ),
@@ -283,13 +272,13 @@ fun InfoView(
                                     )
                                 ) {
                                     Text(
-                                        infoResults.data?.status ?: "",
+                                        infoResults.data?.status?.toString() ?: "",
                                         color = MaterialTheme.colorScheme.primary,
                                         fontSize = MaterialTheme.typography.bodyLarge.fontSize,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        "${infoResults.data?.totalMediaCount ?: ""} ${infoResults.data?.mediaType ?: ""}",
+                                        "${episodeList.data?.firstOrNull()?.pagination?.firstOrNull()?.items?.size ?: ""} ${infoResults.data?.mediaType ?: ""}",
                                         color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold
@@ -335,85 +324,56 @@ fun InfoView(
                             }
                         }
 
-                        AnimatedVisibility(
-                            visible = switchConfig?.options != null
-                        ) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Switch(checked = switchValue, onCheckedChange = {
-                                    infoViewModel.viewModelScope.launch {
-                                        infoViewModel.toggleSwitch()
-                                    }
-                                })
-                                Text(
-                                    switchConfig?.options?.get(
-                                        if (SwitchConfig.isToggled(
-                                                switchValue, switchConfig!!
-                                            )
-                                        ) 1 else 0
-                                    ) ?: "",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(
-                                        vertical = 6.dp, horizontal = 12.dp
-                                    )
-                                )
-                            }
-                        }
-
-                        AnimatedVisibility(visible = !infoResults.data?.seasons.isNullOrEmpty()) {
-                            ExposedDropdownMenuBox(expanded = isSeasonDropdown, onExpandedChange = {
-                                isSeasonDropdown = it
-                            }, modifier = Modifier.fillMaxWidth()) {
-                                TextField(
-                                    value = selectedSeason?.name ?: "Season 1",
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(
-                                            expanded = isSeasonDropdown
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-
-                                ExposedDropdownMenu(
-                                    expanded = isSeasonDropdown,
-                                    onDismissRequest = { isSeasonDropdown = false },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    infoResults.data?.seasons?.forEach { season ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    season.name
-                                                )
-                                            },
-                                            onClick = {
-                                                isSeasonDropdown = false
-                                                // reload the viewmodel with the new data
-                                                coroutineScope.launch {
-                                                    infoViewModel.changeSeason(
-                                                        season
-                                                    )
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.CenterHorizontally)
-                                                .fillMaxWidth()
-                                        )
-                                    }
-                                }
-                            }
-                        }
+//                        AnimatedVisibility(visible = !infoResults.data?.seasons.isNullOrEmpty()) {
+//                            ExposedDropdownMenuBox(expanded = isSeasonDropdown, onExpandedChange = {
+//                                isSeasonDropdown = it
+//                            }, modifier = Modifier.fillMaxWidth()) {
+//                                TextField(
+//                                    value = selectedSeason?.name ?: "Season 1",
+//                                    onValueChange = {},
+//                                    readOnly = true,
+//                                    trailingIcon = {
+//                                        ExposedDropdownMenuDefaults.TrailingIcon(
+//                                            expanded = isSeasonDropdown
+//                                        )
+//                                    },
+//                                    modifier = Modifier
+//                                        .menuAnchor()
+//                                        .fillMaxWidth()
+//                                )
+//
+//                                ExposedDropdownMenu(
+//                                    expanded = isSeasonDropdown,
+//                                    onDismissRequest = { isSeasonDropdown = false },
+//                                    modifier = Modifier.fillMaxWidth()
+//                                ) {
+//                                    infoResults.data?.seasons?.forEach { season ->
+//                                        DropdownMenuItem(
+//                                            text = {
+//                                                Text(
+//                                                    season.name
+//                                                )
+//                                            },
+//                                            onClick = {
+//                                                isSeasonDropdown = false
+//                                                // reload the viewmodel with the new data
+//                                                coroutineScope.launch {
+//                                                    infoViewModel.changeSeason(
+//                                                        season
+//                                                    )
+//                                                }
+//                                            },
+//                                            modifier = Modifier
+//                                                .align(Alignment.CenterHorizontally)
+//                                                .fillMaxWidth()
+//                                        )
+//                                    }
+//                                }
+//                            }
+//                        }
 
                         Text(
-                            infoResults.data?.mediaType ?: "",
+                            infoResults.data?.mediaType.toString() ?: "",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
@@ -427,30 +387,27 @@ fun InfoView(
                                     verticalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
                                     itemsIndexed(
-                                        items = infoViewModel.getMediaList()
-                                            .find { it.title == selectedSeason?.name }?.list
-                                            ?: episodeList.data?.getOrNull(0)?.list ?: listOf()
+                                        items = episodeList.data?.getOrNull(0)?.pagination?.firstOrNull()?.items
+                                            ?: listOf()
                                     ) { index, item ->
                                         EpisodeItem(item,
                                             infoResults.data?.poster ?: "",
                                             Modifier.clickable {
-                                                val bundle =
-                                                    WatchBundle(
-                                                        mediaUuid = infoViewModel.FILE_PREFIX.toString(),
-                                                        selectedMediaIndex = index,
-                                                        url = item.url,
-                                                        mediaTitle = URLDecoder.decode(
-                                                            title,
-                                                            "UTF-8"
-                                                        )
+                                                val bundle = WatchBundle(
+                                                    mediaUuid = infoViewModel.FILE_PREFIX.toString(),
+                                                    selectedMediaIndex = index,
+                                                    url = item.url,
+                                                    mediaTitle = URLDecoder.decode(
+                                                        title, "UTF-8"
                                                     )
+                                                )
 
                                                 // We must run using the appViewModel's coroutine scope
                                                 // since the InfoViewModel will be destroyed when we
                                                 // navigate to the WatchView
-                                                appViewModel.runAsync {
-                                                    infoViewModel.saveMediaBundle()
-                                                }
+//                                                appViewModel.runAsync {
+//                                                    infoViewModel.saveMediaBundle()
+//                                                }
 
                                                 navigator.navigate(
                                                     WatchViewDestination(
@@ -536,7 +493,7 @@ fun InfoView(
 
 @Composable
 fun EpisodeItem(
-    item: InfoResult.MediaItem, imageAlternative: String, modifier: Modifier = Modifier
+    item: InfoResult.MediaList.MediaItem, imageAlternative: String, modifier: Modifier = Modifier
 ) {
     Column(
         Modifier
@@ -559,7 +516,7 @@ fun EpisodeItem(
                     .width(160.dp)
                     .height(90.dp)
                     .clip(MaterialTheme.shapes.medium),
-                model = item.image ?: imageAlternative,
+                model = item.thumbnail ?: imageAlternative,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
                 contentDescription = "${item.title} Thumbnail",

@@ -1,7 +1,10 @@
-var defaultSource = new (source.default);
+var defaultSource = (function() {
+    if (typeof source == "function") return new (source().default);
+    return new (source.default);
+})();
 
 var console = {};
-console.log = function (log) {
+console.log = console.error = console.info = function (log) {
     Native.log(log)
 };
 

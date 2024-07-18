@@ -112,7 +112,7 @@ class WatchViewModel @Inject constructor(
     private val FILE_PREFIX = WatchView.FILE_PREFIX
 
     // We store the media here since it MAY be too large to store in the savedStateHandle
-    private var media: List<InfoResult.MediaListItem> = listOf()
+    private var media: List<InfoResult.MediaList.MediaItem> = listOf()
 
     private lateinit var code: String
 
@@ -155,7 +155,7 @@ class WatchViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     application.cacheDir.resolve("${FILE_PREFIX}_media.json").useLines { lines ->
                         val text = lines.joinToString("\n")
-                        media = json.decodeFromString<List<InfoResult.MediaListItem>>(text)
+                        media = json.decodeFromString<List<InfoResult.MediaList.MediaItem>>(text)
                     }
                 }
             } catch (e: Exception) {
@@ -268,13 +268,7 @@ class WatchViewModel @Inject constructor(
 
     suspend fun getServers(bundle: WatchBundle, bundleId: Int) {
         url = withContext(Dispatchers.IO) {
-            media.getOrNull(0)?.list?.getOrElse(bundleId) {
-                if (media.isEmpty()) {
-                    null
-                } else throw IllegalArgumentException(
-                    UiText.StringRes(R.string.media_index_bounds_error).string(application)
-                )
-            }?.url ?: bundle.url
+            media.getOrNull(0)?.url ?: bundle.url
         }
 
         serverHandler.load(

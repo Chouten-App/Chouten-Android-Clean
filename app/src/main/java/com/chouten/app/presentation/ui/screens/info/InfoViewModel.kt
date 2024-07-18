@@ -2,114 +2,194 @@ package com.chouten.app.presentation.ui.screens.info
 
 import android.app.Application
 import android.os.Parcelable
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chouten.app.common.Resource
+import com.chouten.app.common.UiText
 import com.chouten.app.domain.model.LogEntry
-import com.chouten.app.domain.model.Payloads_V2
 import com.chouten.app.domain.proto.moduleDatastore
-import com.chouten.app.domain.repository.WebviewHandler
+import com.chouten.app.domain.repository.ModuleEngine
 import com.chouten.app.domain.use_case.log_use_cases.LogUseCases
 import com.chouten.app.domain.use_case.module_use_cases.ModuleUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
 @Serializable
 @Parcelize
 data class InfoResult(
-    val id: String?,
     val titles: Titles,
-    val epListURLs: List<String>,
-    val altTitles: List<String>?,
-    val description: String?,
+    val tags: List<String>? = listOf(),
+    val description: String,
     val poster: String,
-    val banner: String?,
-    val status: String?,
-    val totalMediaCount: Int?,
-    val mediaType: String,
-    val seasons: List<Season>?,
-    val mediaList: List<MediaListItem>?,
+    val banner: String? = poster,
+    val status: MediaStatus,
+    val mediaType: MediaType,
+    val seasons: List<SeasonData>? = listOf(),
+    var mediaList: List<MediaList>? = listOf()
 ) : Parcelable {
-    @Serializable
-    @Parcelize
-    data class MediaListItem(
-        val title: String, val list: List<MediaItem>
-    ) : Parcelable
+
+    @Serializable(with = MediaStatusSerializer::class)
+    enum class MediaStatus {
+        COMPLETED, CURRENT, HIATUS, NOT_RELEASED, UNKNOWN;
+
+        override fun toString(): String {
+            return super.name.split("_").joinToString(" ") { s ->
+                s.lowercase()
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            }
+        }
+    }
+
+    class MediaStatusSerializer : KSerializer<MediaStatus> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("mediaStatus", PrimitiveKind.INT)
+
+        override fun deserialize(decoder: Decoder): MediaStatus {
+            val v = decoder.decodeInt()
+            return MediaStatus.entries.find { it.ordinal == v } ?: throw Exception()
+        }
+
+        override fun serialize(encoder: Encoder, value: MediaStatus) {
+            encoder.encodeInt(value.ordinal)
+        }
+    }
+
+    @Serializable(with = MediaTypeSerializer::class)
+    enum class MediaType {
+        EPISODES, CHAPTERS, UNKNOWN;
+
+        override fun toString(): String {
+            return super.name.split("_").joinToString(" ") { s ->
+                s.lowercase()
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            }
+        }
+    }
+
+    class MediaTypeSerializer : KSerializer<MediaType> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("mediaType", PrimitiveKind.INT)
+
+        override fun deserialize(decoder: Decoder): MediaType {
+            return MediaType.entries.find { it.ordinal == decoder.decodeInt() } ?: throw Exception()
+        }
+
+        override fun serialize(encoder: Encoder, value: MediaType) {
+            encoder.encodeInt(value.ordinal)
+        }
+    }
 
     @Serializable
     @Parcelize
     data class Titles(
-        val primary: String, val secondary: String?
+        val primary: String, val secondary: String? = null
     ) : Parcelable
 
     @Serializable
     @Parcelize
-    data class MediaItem(
-        val url: String,
-        val number: Float?,
-        val title: String?,
-        val description: String?,
-        val image: String?,
+    data class SeasonData(
+        val name: String, val url: String, var selected: Boolean?
+    ) : Parcelable
+
+    @Serializable
+    @Parcelize
+    data class MediaList(
+        val title: String, var pagination: List<Pagination>
     ) : Parcelable {
-        override fun toString(): String {
-            return Json.encodeToString(serializer(), this);
-        }
+
+        @Serializable
+        @Parcelize
+        data class MediaItem(
+            val url: String,
+            val number: Double,
+            val title: String? = null,
+            val language: String? = null,
+            val description: String? = null,
+            val thumbnail: String? = null
+        ) : Parcelable
     }
 
     @Serializable
     @Parcelize
-    data class Season(
-        val name: String,
-        val url: String,
+    data class Pagination(
+        val id: String, val title: String, val items: List<MediaList.MediaItem>
     ) : Parcelable
 }
 
-/**
- * @param options The (2) options to be displayed in the switch
- * @param default The index of the default option (0 or 1)
- * @param cache Whether or not the webview should cache the result
- * @param includeInfo Whether or not the webview should redo the info request
- */
-@Serializable
-data class SwitchConfig(
-    val options: Array<String>, val default: Int, val cache: Boolean, val includeInfo: Boolean
-) {
-    companion object {
-        /**
-         * Whether or not the switch is toggled
-         * If the default is 1 and the toggle is "on", the switch is NOT toggled.
-         * If the default is 0 and the toggle is "off", the switch is NOT toggled.
-         * @param value The value of the switch
-         * @param config The config of the switch
-         * @return Whether or not the switch is toggled from it's default state
-         */
-        fun isToggled(value: Boolean, config: SwitchConfig): Boolean {
-            return value.xor((config.default == 0))
-        }
-    }
-}
+//data class InfoResult(
+//    val id: String?,
+//    val titles: Titles,
+//    val epListURLs: List<String>,
+//    val altTitles: List<String>?,
+//    val description: String?,
+//    val poster: String,
+//    val banner: String?,
+//    val status: String?,
+//    val totalMediaCount: Int?,
+//    val mediaType: String,
+//    val seasons: List<Season>?,
+//    val mediaList: List<MediaListItem>?,
+//) : Parcelable {
+//    @Serializable
+//    @Parcelize
+//    data class MediaListItem(
+//        val title: String, val list: List<MediaItem>
+//    ) : Parcelable
+//
+//    @Serializable
+//    @Parcelize
+//    data class Titles(
+//        val primary: String, val secondary: String?
+//    ) : Parcelable
+//
+//    @Serializable
+//    @Parcelize
+//    data class MediaItem(
+//        val url: String,
+//        val number: Float?,
+//        val title: String?,
+//        val description: String?,
+//        val image: String?,
+//    ) : Parcelable {
+//        override fun toString(): String {
+//            return Json.encodeToString(serializer(), this);
+//        }
+//    }
+//
+//    @Serializable
+//    @Parcelize
+//    data class Season(
+//        val name: String,
+//        val url: String,
+//    ) : Parcelable
+//}
 
 @HiltViewModel
 class InfoViewModel @Inject constructor(
     val application: Application,
     private val moduleUseCases: ModuleUseCases,
-    private val switchConfigHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<SwitchConfig>>,
-    private val metadataHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<InfoResult>>,
-    val epListHandler: WebviewHandler<Payloads_V2.Action_V2, Payloads_V2.GenericPayload<List<InfoResult.MediaListItem>>>,
+    val engine: ModuleEngine,
     private val logUseCases: LogUseCases,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -117,30 +197,24 @@ class InfoViewModel @Inject constructor(
     private var _title = ""
     private var _url = ""
 
-    val switchValue: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val cachedSwitchResults: MutableStateFlow<MutableMap<String, Pair<Resource<InfoResult>, Resource<List<InfoResult.MediaListItem>>>>> =
-        MutableStateFlow(
-            mutableMapOf()
-        )
-
-    private val _infoResults: MutableStateFlow<Resource<InfoResult>> =
+    private val infoFlow = MutableStateFlow("")
+    val infoResults: MutableStateFlow<Resource<InfoResult>> =
         MutableStateFlow(Resource.Uninitialized())
-    val infoResults: StateFlow<Resource<InfoResult>> = _infoResults
 
-    private val _episodeList: MutableStateFlow<Resource<List<InfoResult.MediaListItem>>> =
+    private val episodeFlow = MutableStateFlow("[]")
+    val episodeResults: MutableStateFlow<Resource<List<InfoResult.MediaList>>> =
         MutableStateFlow(Resource.Uninitialized())
-    val episodeList: StateFlow<Resource<List<InfoResult.MediaListItem>>> = _episodeList
 
     /**
      * The list of media items. Made from concatenating the [infoResults] and [episodeList] data
      */
-    fun getMediaList(): List<InfoResult.MediaListItem> {
-        return runBlocking {
-            infoResults.firstOrNull()?.data?.mediaList?.plus(
-                episodeList.firstOrNull()?.data ?: listOf()
-            ) ?: listOf()
-        }
-    }
+//    fun getMediaList(): List<InfoResult.MediaListItem> {
+//        return runBlocking {
+//            infoResults.firstOrNull()?.data?.mediaList?.plus(
+//                episodeList.firstOrNull()?.data ?: listOf()
+//            ) ?: listOf()
+//        }
+//    }
 
     /**
      * Whether or not the episode list has been paginated to the end
@@ -156,8 +230,8 @@ class InfoViewModel @Inject constructor(
     var paginatedAll = false
         private set
 
-    private var _selectedSeason: MutableStateFlow<InfoResult.Season?> = MutableStateFlow(null)
-    val selectedSeason: StateFlow<InfoResult.Season?> = _selectedSeason
+//    private var _selectedSeason: MutableStateFlow<InfoResult.Season?> = MutableStateFlow(null)
+//    val selectedSeason: StateFlow<InfoResult.Season?> = _selectedSeason
 
     var seasonCount = 0
         private set
@@ -171,11 +245,22 @@ class InfoViewModel @Inject constructor(
 
     private lateinit var code: String
 
-    private val _switchConfig: MutableStateFlow<SwitchConfig?> = MutableStateFlow(null)
-    val switchConfig: StateFlow<SwitchConfig?> = _switchConfig
-
     init {
+        engine.scope = viewModelScope;
+        engine.registerObservable("info", infoFlow)
+        engine.registerObservable("episodes", episodeFlow)
+        engine.registerInterceptor("logging") {
+            viewModelScope.launch {
+                logUseCases.insertLog(
+                    LogEntry(
+                        entryContent = it.toString()
+                    )
+                )
+            }
+        }
+
         viewModelScope.launch {
+            reloadCode()
             withContext(Dispatchers.IO) {
                 FILE_PREFIX = UUID.randomUUID().let {
                     // Check if a lock file exists for the current media
@@ -190,107 +275,63 @@ class InfoViewModel @Inject constructor(
                 }
             }
         }
+
         viewModelScope.launch {
-            switchConfigHandler.logFn = { log(content = it) }
-            metadataHandler.logFn = { log(content = it) }
-            epListHandler.logFn = { log(content = it) }
-
-            switchConfigHandler.initialize(application) { res ->
-                if (res.action == Payloads_V2.Action_V2.ERROR) {
-                    viewModelScope.launch {
-                        if (code.contains("function getSwitchConfig")) {
-                            // Not all modules have a switch config, we should only log if
-                            // there is a function but it fails
-                            log(content = "Failed to get switch config for $_title.\n${res.result.result}")
-                        }
-                        switchConfigHandler.destroy()
-                    }
-                    return@initialize
-                }
-                viewModelScope.launch {
-                    _switchConfig.emit(res.result.result)
-                    switchValue.emit(res.result.result.default == 1)
-
-                    metadataHandler.setGenericValue("switchConfig", res.result.result)
-                    metadataHandler.setGenericValue("switchValue", res.result.result.default == 1)
-
-                    epListHandler.setGenericValue("switchConfig", res.result.result)
-                    epListHandler.setGenericValue("switchValue", res.result.result.default == 1)
-
-                    switchConfigHandler.destroy()
-                }
-            }
-            metadataHandler.initialize(application) { res ->
-                if (res.action == Payloads_V2.Action_V2.ERROR) {
-                    viewModelScope.launch {
-                        log(content = "Failed to get info for $_title.\n${res.result.result}")
-                        _infoResults.emit(
-                            Resource.Error(
-                                message = "Failed to get info for $_title", data = null
-                            )
+            infoFlow.collectLatest {
+                if (it.isBlank()) return@collectLatest
+                try {
+                    Log.d("InfoViewModel", "We have the info result $it")
+                    infoResults.emit(Resource.Success(Json {
+                        ignoreUnknownKeys = true
+                    }.decodeFromString<InfoResult>(it)))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    infoResults.emit(
+                        Resource.Error(
+                            UiText.Literal("Could not get Info Results").string(application)
                         )
-                    }
-                    return@initialize
-                }
-                viewModelScope.launch {
-                    if (_selectedSeason.firstOrNull() == null) _selectedSeason.emit(
-                        res.result.result.seasons?.firstOrNull()
                     )
-                    seasonCount = res.result.result.seasons?.size ?: 1
-                    _infoResults.emit(infoResults.firstOrNull()?.let {
-                        if (it !is Resource.Success) return@let null
-                        Resource.Success(
-                            it.data.copy(
-                                epListURLs = res.result.result.epListURLs
-                            )
-                        )
-                    } ?: Resource.Success(res.result.result))
-
-                    switchConfig.firstOrNull()?.let { config ->
-                        config.options.getOrNull(
-                            if (config.isToggled(config = config)) 1 else 0
-                        )
-                    }?.let {
-                        val switchResults = cachedSwitchResults.firstOrNull()
-                        if (switchResults?.get(it) == null) {
-                            switchResults?.set(
-                                it, Pair(
-                                    infoResults.firstOrNull() ?: Resource.Uninitialized(),
-                                    episodeList.firstOrNull() ?: Resource.Uninitialized()
-                                )
-                            )?.also {
-                                this@InfoViewModel.cachedSwitchResults.emit(switchResults)
-                            }
-                        }
-                    }
                 }
             }
+        }
 
-            switchConfigHandler.load(
-                getCode(), WebviewHandler.Companion.WebviewPayload(
-                    query = "", action = Payloads_V2.Action_V2.GET_SWITCH_CONFIG
-                )
-            )
+        viewModelScope.launch {
+            episodeFlow.collectLatest {
+                try {
+                    Log.d("InfoViewModel", "We have the episode result $it")
+                    episodeResults.emit(Resource.Success(Json {
+                        ignoreUnknownKeys = true
+                    }.decodeFromString<List<InfoResult.MediaList>>(it)))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    infoResults.emit(
+                        Resource.Error(
+                            UiText.Literal("Could not get Episode Results").string(application)
+                        )
+                    )
+                }
+            }
         }
     }
 
-    private suspend fun getCode(): String {
-        return if (!::code.isInitialized) {
-            withContext(Dispatchers.IO) {
-                val moduleId =
-                    application.moduleDatastore.data.firstOrNull()?.selectedModuleId
-                        ?: return@withContext ""
-                val module = moduleUseCases.getModuleUris().find {
-                    it.id == moduleId
-                } ?: return@withContext ""
-                return@withContext module.code ?: run {
-                    viewModelScope.launch {
-                        logUseCases.insertLog(LogEntry(entryContent = "Failed to find info code for ${module.name}"))
-                    }
-                    ""
-                }
+    private suspend fun reloadCode() {
+        withContext(Dispatchers.IO) {
+            val moduleId = application.moduleDatastore.data.firstOrNull()?.selectedModuleId?.let {
+                it.ifBlank { return@let null }
+            } ?: return@withContext
+            val module = moduleUseCases.getModuleUris().find {
+                it.id == moduleId
+            } ?: return@withContext
+            code = module.code ?: run {
+                logUseCases.insertLog(LogEntry(entryContent = "Failed to find info code for ${module.name}"))
+                return@run ""
             }
-        } else code
+            withContext(Dispatchers.Main) {
+                engine.load(
+                    code
+                )
+            }
+        }
     }
 
     suspend fun getInfo(title: String, url: String) {
@@ -298,183 +339,150 @@ class InfoViewModel @Inject constructor(
             _title = URLDecoder.decode(title, "UTF-8")
             _url = URLDecoder.decode(url, "UTF-8")
         }
-        metadataHandler.load(
-            getCode(), WebviewHandler.Companion.WebviewPayload(
-                query = _url, action = Payloads_V2.Action_V2.GET_METADATA
-            )
-        )
+        engine.evaluateJavascript(
+            """
+                // Not doing this makes the defaultSource not load ?? Maybe something to do with giving
+                // the WebView time to parse the JS?
+                if (defaultSource == undefined || typeof defaultSource["info"] != "function") {
+                    console.log("Could not load Info Function on `defaultSource`!");
+                } else {
+                    (async function() {
+                        var res = await defaultSource.info('$_url');
+                        console.log("We got our result. Sending payload")
+                        if (Native["sendResult"] == null || Native["sendResult"] == undefined) {
+                           console.log("sendResult not found");
+                        }
+                        Native.sendResult(JSON.stringify({key: "info", value: JSON.stringify(res)}));
+                    })();
+                }
+        """.trimIndent()
+        ) {}
     }
 
-    suspend fun getEpisodes(eplistUrls: List<String>, offset: Int = 0) {
-        epListHandler.initialize(application) { res ->
-            if (res.action == Payloads_V2.Action_V2.ERROR) {
-                viewModelScope.launch {
-                    log(content = "Failed to get episodes for $_title.\n${res.result.result}")
-                    _episodeList.emit(
-                        Resource.Error(
-                            message = "Failed to get episodes for $_title", data = null
-                        )
-                    )
-                }
-                return@initialize
-            }
-            viewModelScope.launch {
-                // Combine the results of `episodeList` and `res.result.result`
-                // into a single list. This is done because we don't load all the episodes at the same
-                // time - previous episodes may be contained in the flow and we don't want
-                // to lose them.
-                // Using a set means that duplicate entries will not be added to the list.
-                val episodes: MutableSet<InfoResult.MediaListItem> =
-                    episodeList.firstOrNull()?.data?.toMutableSet()
-                        ?: mutableSetOf()
-                episodes.addAll(res.result.result)
-                if (episodes.size > 1) {
-                    val collectedInfoResults = infoResults.firstOrNull()?.data
-                    collectedInfoResults?.let {
-                        _infoResults.emit(
-                            Resource.Success(
-                                it.copy(
-                                    seasons = (it.seasons?.plus(episodes.mapIndexed { index, season ->
-                                        val resultSeason = InfoResult.Season(
-                                            name = season.title,
-                                            url = season.list.firstOrNull()?.url ?: ""
-                                        )
-                                        if (it.seasons.size.plus(
-                                                it.mediaList?.size ?: 0
-                                            ) == 0 && index == 0
-                                        ) {
-                                            _selectedSeason.emit(resultSeason)
-                                        }
-                                        resultSeason
-                                    })?.toSet()?.toList())
-                                )
-                            )
-                        )
-                    }
-                }
-                switchConfig.firstOrNull()?.let { config ->
-                    config.options.getOrNull(
-                        if (config.isToggled(config = config)) 1 else 0
-                    )
-                }?.let {
-                    cachedSwitchResults.firstOrNull()?.let { switchResults ->
-                        if (switchResults[it] == null || switchResults[it]?.second !is Resource.Success) {
-                            switchResults[it] = Pair(
-                                infoResults.firstOrNull() ?: Resource.Uninitialized(),
-                                Resource.Success(episodes.toList())
-                            )
-                            this@InfoViewModel.cachedSwitchResults.emit(switchResults)
+    suspend fun getEpisodes(season: InfoResult.SeasonData, offset: Int = 0) {
+        engine.evaluateJavascript(
+            """
+            // Not doing this makes the defaultSource not load ?? Maybe something to do with giving
+                // the WebView time to parse the JS?
+                if (defaultSource == undefined || typeof defaultSource["info"] != "function") {
+                    console.log("Could not load Info Function on `defaultSource`!");
+                } else {
+                    (async function() {
+                        var res = await defaultSource.media('${season.url}');
+                        console.log("We got our result. Sending payload")
+                        if (Native["sendResult"] == null || Native["sendResult"] == undefined) {
+                           console.log("sendResult not found");
                         }
-                    }
+                        Native.sendResult(JSON.stringify({key: "episodes", value: JSON.stringify(res)}));
+                    })();
                 }
-                _episodeList.emit(Resource.Success(episodes.toList()))
-                if (_paginatedAll) {
-                    paginatedAll = true
-                }
-            }
-        }
-        epListHandler.load(
-            getCode(), WebviewHandler.Companion.WebviewPayload(
-                query = eplistUrls.getOrNull(offset) ?: "",
-                action = Payloads_V2.Action_V2.GET_EPISODE_LIST
-            )
-        )
+        """.trimIndent()
+        ) {}
+//        epListHandler.initialize(application) { res ->
+//            if (res.action == Payloads_V2.Action_V2.ERROR) {
+//                viewModelScope.launch {
+//                    log(content = "Failed to get episodes for $_title.\n${res.result.result}")
+//                    _episodeList.emit(
+//                        Resource.Error(
+//                            message = "Failed to get episodes for $_title", data = null
+//                        )
+//                    )
+//                }
+//                return@initialize
+//            }
+//            viewModelScope.launch {
+//                // Combine the results of `episodeList` and `res.result.result`
+//                // into a single list. This is done because we don't load all the episodes at the same
+//                // time - previous episodes may be contained in the flow and we don't want
+//                // to lose them.
+//                // Using a set means that duplicate entries will not be added to the list.
+//                val episodes: MutableSet<InfoResult.MediaListItem> =
+//                    episodeList.firstOrNull()?.data?.toMutableSet() ?: mutableSetOf()
+//                episodes.addAll(res.result.result)
+//                if (episodes.size > 1) {
+//                    val collectedInfoResults = infoResults.firstOrNull()?.data
+//                    collectedInfoResults?.let {
+//                        _infoResults.emit(
+//                            Resource.Success(
+//                                it.copy(
+//                                    seasons = (it.seasons?.plus(episodes.mapIndexed { index, season ->
+//                                        val resultSeason = InfoResult.Season(
+//                                            name = season.title,
+//                                            url = season.list.firstOrNull()?.url ?: ""
+//                                        )
+//                                        if (it.seasons.size.plus(
+//                                                it.mediaList?.size ?: 0
+//                                            ) == 0 && index == 0
+//                                        ) {
+//                                            _selectedSeason.emit(resultSeason)
+//                                        }
+//                                        resultSeason
+//                                    })?.toSet()?.toList())
+//                                )
+//                            )
+//                        )
+//                    }
+//                }
+//                _episodeList.emit(Resource.Success(episodes.toList()))
+//                if (_paginatedAll) {
+//                    paginatedAll = true
+//                }
+//            }
+//        }
+//        epListHandler.load(
+//            getCode(), WebviewHandler.Companion.WebviewPayload(
+//                query = eplistUrls.getOrNull(offset) ?: "",
+//                action = Payloads_V2.Action_V2.GET_EPISODE_LIST
+//            )
+//        )
 
         // We have finished loading all the episodes
-        if (offset + 1 == eplistUrls.size) {
-            _paginatedAll = true
-        }
+//        if (offset + 1 == eplistUrls.size) {
+//            _paginatedAll = true
+//        }
     }
 
-    fun changeSeason(season: InfoResult.Season) {
-        viewModelScope.launch {
-            if (season == selectedSeason.firstOrNull()) return@launch
-            _selectedSeason.emit(infoResults.value.data?.seasons?.find { it == season })
-            // If the media doesn't appear to have been loaded, request it using the season url
-            if (getMediaList().find { it.title == season.name } == null) {
-                cachedSwitchResults.emit(
-                    mutableMapOf()
-                )
-                infoResults.firstOrNull()?.data?.let {
-                    _infoResults.emit(
-                        Resource.Success(
-                            it.copy(
-                                epListURLs = listOf(season.url)
-                            )
-                        )
-                    )
-                }
-                _episodeList.emit(
-                    Resource.Uninitialized()
-                )
-            }
-        }
-    }
-
-    suspend fun toggleSwitch(value: Boolean? = null) {
-        // We must not the value so we get a double negation
-        val toggleValue = value?.not() ?: switchValue.firstOrNull() ?: false
-        switchValue.emit(!toggleValue)
-        metadataHandler.setGenericValue("switchValue", !toggleValue)
-        epListHandler.setGenericValue("switchValue", !toggleValue)
-
-        val config = switchConfig.firstOrNull()
-        if (config?.cache == true && cachedSwitchResults.firstOrNull()?.size == 2) {
-            val key = config.options.getOrNull(
-                if (config.isToggled(!toggleValue)) 1 else 0
-            )
-            cachedSwitchResults.firstOrNull()?.get(key)?.second?.let {
-                _episodeList.emit(it)
-            }
-            return
-        }
-
-        if (config?.includeInfo == true) {
-            _infoResults.emit(Resource.Uninitialized())
-        }
-        _episodeList.emit(Resource.Uninitialized())
-    }
-
-    /**
-     * Wrapper for [SwitchConfig.Companion.isToggled]
-     * @see SwitchConfig.Companion.isToggled
-     */
-    private fun SwitchConfig.isToggled(
-        value: Boolean? = null, config: SwitchConfig? = null
-    ): Boolean {
-        return runBlocking {
-            SwitchConfig.isToggled(
-                value ?: switchValue.firstOrNull() ?: return@runBlocking false,
-                config ?: switchConfig.firstOrNull() ?: return@runBlocking false
-            )
-        }
-    }
-
-    fun log(title: String = "Webview Handler", content: String) {
-        viewModelScope.launch {
-            logUseCases.insertLog(
-                LogEntry(
-                    entryHeader = title, entryContent = content
-                )
-            )
-        }
-    }
+//    fun changeSeason(season: InfoResult.Season) {
+//        viewModelScope.launch {
+//            if (season == selectedSeason.firstOrNull()) return@launch
+//            _selectedSeason.emit(infoResults.value.data?.seasons?.find { it == season })
+//            // If the media doesn't appear to have been loaded, request it using the season url
+//            if (getMediaList().find { it.title == season.name } == null) {
+//                cachedSwitchResults.emit(
+//                    mutableMapOf()
+//                )
+//                infoResults.firstOrNull()?.data?.let {
+//                    _infoResults.emit(
+//                        Resource.Success(
+//                            it.copy(
+//                                epListURLs = listOf(season.url)
+//                            )
+//                        )
+//                    )
+//                }
+//                _episodeList.emit(
+//                    Resource.Uninitialized()
+//                )
+//            }
+//        }
+//    }
 
     suspend fun saveMediaBundle() {
-        val season = selectedSeason.firstOrNull()
-        val media = getMediaList().sortedBy {
-            // We want the selected season to be the first index
-            if (it.title == season?.name) {
-                0
-            } else {
-                1
-            }
-        }
+//        <List<InfoResult.MediaList.MediaItem>>
+        val season = episodeResults.firstOrNull()?.data?.firstOrNull()?.pagination?.firstOrNull()?.items ?: listOf()
+//        val media = getMediaList().sortedBy {
+//            // We want the selected season to be the first index
+//            if (it.title == season?.name) {
+//                0
+//            } else {
+//                1
+//            }
+//        }
         withContext(Dispatchers.IO) {
             application.applicationContext.cacheDir.resolve("${FILE_PREFIX}_media.json")
                 .bufferedWriter().use {
                     it.write(
-                        Json.encodeToString(media)
+                        Json.encodeToString(season)
                     )
                 }
         }
